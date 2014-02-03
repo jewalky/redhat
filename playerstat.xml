@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="cp866"?>
+<status>
+ <server>
+  <id>1</id>
+  <name>Testing #01</name>
+  <online>active</online>
+  <detailed>true</detailed>
+  <map_time>0:00</map_time>
+  <servermode>2</servermode>
+  <map_name>Warriors of Allods</map_name>
+  <map_size>32x32</map_size>
+  <map_level>1</map_level>
+  <gamemode>0</gamemode>
+  <player_count>0</player_count>
+  <players>
+  </players>
+ </server>
+</status>

@@ -11,3 +11,9 @@
 *.lai
 *.la
 *.a
+
+# C::B bin
+bin
+obj
+*.depend
+*.layout
