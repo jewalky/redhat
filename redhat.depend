@@ -287,3 +287,275 @@
 
 1103304882 w:\sources\redhat_v2\chartdirector\include\memblock.h
 
+1354941898 source:w:\dev\redhat\binarystream.cpp
+	"BinaryStream.hpp"
+	<fstream>
+
+1354941882 w:\dev\redhat\binarystream.hpp
+	<string>
+	<vector>
+
+1380745672 source:w:\dev\redhat\ccharacter.cpp
+	"CCharacter.hpp"
+	<ctime>
+	<cstdlib>
+	"utils.hpp"
+
+1380745658 w:\dev\redhat\ccharacter.hpp
+	<string>
+	<vector>
+	"BinaryStream.hpp"
+
+1354073108 w:\dev\redhat\utils.hpp
+	<string>
+	<vector>
+	<dirent.h>
+	<cstdlib>
+
+1345370865 source:w:\dev\redhat\character.cpp
+	<cstdio>
+	<cstring>
+	<fstream>
+	"character.hpp"
+
+1354930351 w:\dev\redhat\character.hpp
+	<cstdlib>
+	<string>
+	<vector>
+	<map>
+
+1391557779 source:w:\dev\redhat\client.cpp
+	"client.hpp"
+	"utils.hpp"
+	<winsock2.h>
+	<ctime>
+	"config.hpp"
+	"login.hpp"
+	"session.hpp"
+	"version.hpp"
+	<algorithm>
+	"server.hpp"
+	"character.hpp"
+	"session.hpp"
+	"CRC_32.h"
+
+1363725091 w:\dev\redhat\client.hpp
+	<string>
+	<vector>
+	"socket.hpp"
+	"server.hpp"
+	"listener.hpp"
+	<fstream>
+
+1378744524 w:\dev\redhat\socket.hpp
+	<string>
+	"packet.hpp"
+	"serialize.hpp"
+
+1347468193 w:\dev\redhat\packet.hpp
+	"serialize.hpp"
+
+1363724790 w:\dev\redhat\serialize.hpp
+	<vector>
+	<string>
+	<stdint.h>
+
+1391563259 w:\dev\redhat\server.hpp
+	"listener.hpp"
+	"config.hpp"
+	"socket.hpp"
+	<windows.h>
+
+1352748591 w:\dev\redhat\listener.hpp
+	<vector>
+	"socket.hpp"
+
+1391359584 w:\dev\redhat\config.hpp
+	<string>
+	<vector>
+
+1391362190 w:\dev\redhat\login.hpp
+	<string>
+	<vector>
+	"sql.hpp"
+	"CCharacter.hpp"
+
+1355004616 w:\dev\redhat\sql.hpp
+	<winsock2.h>
+	<mysql.h>
+	<string>
+
+1249641072 w:\dev\redhat\mysql\include\mysql.h
+	<standards.h>
+	<sys/types.h>
+	<winsock2.h>
+	"mysql_version.h"
+	"mysql_com.h"
+	"mysql_time.h"
+	"my_list.h"
+	"typelib.h"
+	"my_alloc.h"
+
+1249656444 w:\dev\redhat\mysql\include\mysql_version.h
+	<custom_conf.h>
+
+1249641072 w:\dev\redhat\mysql\include\mysql_com.h
+
+1249641072 w:\dev\redhat\mysql\include\mysql_time.h
+
+1249641072 w:\dev\redhat\mysql\include\my_list.h
+
+1249641072 w:\dev\redhat\mysql\include\typelib.h
+	"my_alloc.h"
+
+1249641072 w:\dev\redhat\mysql\include\my_alloc.h
+
+1347560421 w:\dev\redhat\session.hpp
+	<string>
+
+1362846202 w:\dev\redhat\version.hpp
+	<stdint.h>
+
+1332113715 w:\dev\redhat\crc_32.h
+	<windows.h>
+
+1391359590 source:w:\dev\redhat\config.cpp
+	"config.hpp"
+	<fstream>
+	<algorithm>
+	"utils.hpp"
+	"server.hpp"
+
+1332113716 source:w:\dev\redhat\crc_32.cpp
+	"CRC_32.h"
+	<io.h>
+	<fcntl.h>
+	<share.h>
+	<tchar.h>
+	<commctrl.h>
+
+1351864373 source:w:\dev\redhat\hat2.cpp
+	"packet.hpp"
+	<winsock2.h>
+
+1354073061 source:w:\dev\redhat\lgn.cpp
+	<cstring>
+	"lgn.hpp"
+	"utils.hpp"
+
+1347573936 w:\dev\redhat\lgn.hpp
+	<string>
+	<fstream>
+	<vector>
+	"character.hpp"
+
+1363726300 source:w:\dev\redhat\listener.cpp
+	"config.hpp"
+	"listener.hpp"
+	"socket.hpp"
+	"utils.hpp"
+	"client.hpp"
+	"server.hpp"
+	<winsock2.h>
+
+1391365777 source:w:\dev\redhat\login.cpp
+	"login.hpp"
+	"sql.hpp"
+	"utils.hpp"
+	"config.hpp"
+	"sha1.h"
+	<windows.h>
+	"CCharacter.hpp"
+
+1321690042 w:\dev\redhat\sha1.h
+
+1363726592 source:w:\dev\redhat\packet.cpp
+	"packet.hpp"
+
+1388792171 source:w:\dev\redhat\redhat.cpp
+	"config.hpp"
+	"socket.hpp"
+	"sql.hpp"
+	"utils.hpp"
+	"listener.hpp"
+	"status.hpp"
+
+1388792160 w:\dev\redhat\status.hpp
+
+1363724797 source:w:\dev\redhat\serialize.cpp
+	"serialize.hpp"
+	"utils.hpp"
+	<cstring>
+	<string>
+	<fstream>
+	<iostream>
+
+1351870101 source:w:\dev\redhat\session.cpp
+	"session.hpp"
+	<windows.h>
+	<vector>
+
+1321690788 source:w:\dev\redhat\sha1.cpp
+	"sha1.h"
+
+1379530696 source:w:\dev\redhat\socket.cpp
+	"config.hpp"
+	"socket.hpp"
+	<winsock2.h>
+	<fstream>
+	"utils.hpp"
+	"hat2.hpp"
+
+1347445832 w:\dev\redhat\hat2.hpp
+
+1363727801 source:w:\dev\redhat\sql.cpp
+	"config.hpp"
+	"sql.hpp"
+	"utils.hpp"
+	<iostream>
+	<mysql.h>
+	<windows.h>
+	"CCharacter.hpp"
+	"login.hpp"
+
+1352001781 source:w:\dev\redhat\sqlib.cpp
+	"sqlib.hpp"
+	"utils.hpp"
+
+1352005624 w:\dev\redhat\sqlib.hpp
+	<winsock2.h>
+	<string>
+	<mysql.h>
+	<map>
+
+1388792204 source:w:\dev\redhat\status.cpp
+	"status.hpp"
+	<fstream>
+	<string>
+	"server.hpp"
+	"utils.hpp"
+	<ctime>
+	"BinaryStream.hpp"
+
+1358636793 source:w:\dev\redhat\utils.cpp
+	"utils.hpp"
+	"config.hpp"
+	<cstdarg>
+	<cstdio>
+	<ctime>
+	<fstream>
+	<windows.h>
+
+1362846234 source:w:\dev\redhat\version.cpp
+	"version.hpp"
+	<map>
+
+1391563322 source:w:\dev\redhat\server.cpp
+	"server.hpp"
+	"login.hpp"
+	"utils.hpp"
+	"session.hpp"
+	"character.hpp"
+	"socket.hpp"
+	"status.hpp"
+

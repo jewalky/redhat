@@ -640,7 +640,7 @@ bool CL_Login(Client* conn, Packet& pack)
                     return false;
                 }
 
-                if(srv->Info.GameMode != p_gamemode)
+                if((((srv->Info.ServerMode & SVF_SOFTCORE) == SVF_SOFTCORE) != (p_gamemode == GAMEMODE_Softcore)) || (((srv->Info.ServerMode & SVF_SOFTCORE) != SVF_SOFTCORE) && (srv->Info.GameMode != p_gamemode)))
                 {
                     Printf(LOG_Error, "[CL] %s (%s) - Locked on server ID %u with different game mode (%u != %u)!\n", conn->HisAddr.c_str(), s_login.c_str(), srv->Number, p_gamemode, srv->Info.GameMode);
                     CLCMD_Kick(conn, P_WRONG_GAMEMODE);
@@ -931,6 +931,7 @@ uint32_t CheckNickname(std::string nickname, bool softcore)
                             (ch == '+') ||
                             (ch == '_') ||
                             (ch == '$') ||
+                            (ch == '(') || (ch == ')') ||
                             (in_clan && ( // “ŒÀ‹ Œ ¬ œ–»œ»—¿’
                                 (ch == 0x7F) || // 0x7F Í‚‡‰‡Ú
                                 (ch == '{' || ch == '}' || ch == '|') ||

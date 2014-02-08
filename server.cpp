@@ -83,7 +83,9 @@ bool SVCMD_Welcome(ServerConnection* conn)
 {
     Packet pack;
     pack << (uint8_t)0xD5;
-    pack << (uint32_t)Config::HatID;
+    if((conn->Parent->Info.ServerCaps & SERVER_CAP_SOFTCORE) != SERVER_CAP_SOFTCORE)
+        pack << (uint32_t)Config::HatID;
+    else pack << (uint32_t)Config::HatIDSoftcore;
     pack << (uint32_t)1;
 
     return (SOCK_SendPacket(conn->Socket, pack, conn->Version) == 0);
@@ -199,9 +201,17 @@ bool SV_ReturnCharacter(ServerConnection* conn, Packet& pack)
         p_chrdata[i] = obsb[i];
     p_chrlen = obsb.size();
 
-    if((conn->Parent->Info.GameMode == GAMEMODE_Cooperative) && // save only in coop
-       !((conn->Parent->Info.ServerMode & SVF_SOFTCORE) && (chr.HatId != Config::HatIDSoftcore)) && // and only if softcore HatID matches
-       !Login_SetCharacter(p_logname, p_id1, p_id2, p_chrlen, p_chrdata, chr.Nick))
+    bool should_save = true;
+    if((chr.Id2 & 0x3F000000) != 0x3F000000)
+    {
+        if(conn->Parent->Info.GameMode != GAMEMODE_Cooperative)
+            should_save = false;
+        bool server_softcore = ((conn->Parent->Info.ServerMode & SVF_SOFTCORE) == SVF_SOFTCORE);
+        if(server_softcore && chr.HatId != Config::HatIDSoftcore)
+            should_save = false;
+    }
+
+    if(should_save && !Login_SetCharacter(p_logname, p_id1, p_id2, p_chrlen, p_chrdata, chr.Nick))
         Printf(LOG_Error, "[DB] Error: Login_SetCharacter(\"%s\", %u, %u, %u, %08X, \"%s\").\n", p_logname.c_str(), p_id1, p_id2, p_chrlen, p_chrdata, chr.Nick.c_str());
     else
     {
