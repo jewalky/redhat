@@ -19,6 +19,56 @@ std::string Login_MakePassword(std::string password)
     return std::string(hexstring);
 }
 
+bool Login_UnlockOne(std::string login)
+{
+    if(!SQL_CheckConnected()) return false;
+
+    try
+    {
+        login = SQL_Escape(login);
+
+        std::string query_unlockone = Format("UPDATE `logins` SET `locked_hat`='0' WHERE `name`='%s'", login.c_str());
+        if(SQL_Query(query_unlockone.c_str()) != 0)
+        {
+            SQL_Unlock();
+            return false;
+        }
+
+        SQL_Unlock();
+    }
+    catch(...)
+    {
+        SQL_Unlock();
+        return false;
+    }
+
+    return true;
+}
+
+bool Login_UnlockAll()
+{
+    if(!SQL_CheckConnected()) return false;
+
+    try
+    {
+        std::string query_unlockall = "UPDATE `logins` SET `locked_hat`='0'";
+        if(SQL_Query(query_unlockall.c_str()) != 0)
+        {
+            SQL_Unlock();
+            return false;
+        }
+
+        SQL_Unlock();
+    }
+    catch(...)
+    {
+        SQL_Unlock();
+        return false;
+    }
+
+    return true;
+}
+
 bool Login_Exists(std::string login)
 {
     //Printf("Login_Exists()\n");
@@ -242,7 +292,7 @@ bool Login_SetPassword(std::string login, std::string password)
     return true;
 }
 
-bool Login_SetLocked(std::string login, bool locked, unsigned long id1, unsigned long id2, unsigned long srvid)
+bool Login_SetLocked(std::string login, bool locked_hat, bool locked, unsigned long id1, unsigned long id2, unsigned long srvid)
 {
     //Printf("Login_SetLocked()\n");
     if(!SQL_CheckConnected()) return false;
@@ -253,19 +303,21 @@ bool Login_SetLocked(std::string login, bool locked, unsigned long id1, unsigned
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_setlockd = Format("UPDATE `logins` SET `locked`='%u', `locked_id1`='%u', `locked_id2`='%u', `locked_srvid`='%u' WHERE `name`='%s'",
-                                                (unsigned int)locked, id1, id2, srvid, login.c_str());
+        std::string query_setlockd = Format("UPDATE `logins` SET `locked_hat`='%u', `locked`='%u', `locked_id1`='%u', `locked_id2`='%u', `locked_srvid`='%u' WHERE `name`='%s'",
+                                                (unsigned int)locked_hat, (unsigned int)locked, id1, id2, srvid, login.c_str());
         if(SQL_Query(query_setlockd.c_str()) != 0)
         {
             SQL_Unlock();
             return false;
         }
 
+        /*
         if(SQL_AffectedRows() != 1)
         {
             SQL_Unlock();
             return false;
         }
+        */
 
         SQL_Unlock();
     }
@@ -277,7 +329,7 @@ bool Login_SetLocked(std::string login, bool locked, unsigned long id1, unsigned
     return true;
 }
 
-bool Login_GetLocked(std::string login, bool& locked, unsigned long& id1, unsigned long& id2, unsigned long& srvid)
+bool Login_GetLocked(std::string login, bool& locked_hat, bool& locked, unsigned long& id1, unsigned long& id2, unsigned long& srvid)
 {
     //Printf("Login_GetLocked()\n");
     if(!SQL_CheckConnected()) return false;
@@ -287,7 +339,7 @@ bool Login_GetLocked(std::string login, bool& locked, unsigned long& id1, unsign
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `locked`, `locked_id1`, `locked_id2`, `locked_srvid` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `locked_hat`, `locked`, `locked_id1`, `locked_id2`, `locked_srvid` FROM `logins` WHERE `name`='%s'", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -308,6 +360,7 @@ bool Login_GetLocked(std::string login, bool& locked, unsigned long& id1, unsign
         }
 
         MYSQL_ROW row = SQL_FetchRow(result);
+        locked_hat = (SQL_FetchInt(row, result, "locked_hat"));
         locked = (SQL_FetchInt(row, result, "locked"));
         id1 = SQL_FetchInt(row, result, "locked_id1");
         id2 = SQL_FetchInt(row, result, "locked_id2");
@@ -396,6 +449,90 @@ bool Login_GetBanned(std::string login, bool& banned, unsigned long& date_ban, u
         date_ban = SQL_FetchInt(row, result, "banned_date");
         date_unban = SQL_FetchInt(row, result, "banned_unbandate");
         reason = SQL_FetchString(row, result, "banned_reason");
+        SQL_FreeResult(result);
+        SQL_Unlock();
+
+        return true;
+    }
+    catch(...)
+    {
+        SQL_Unlock();
+        return false;
+    }
+}
+
+bool Login_SetMuted(std::string login, bool muted, unsigned long date_mute, unsigned long date_unmute, std::string reason)
+{
+    //Printf("Login_SetMuted()\n");
+    if(!SQL_CheckConnected()) return false;
+
+    try
+    {
+        if(!Login_Exists(login)) return false;
+        login = SQL_Escape(login);
+        reason = SQL_Escape(reason);
+
+        SQL_Lock();
+
+        std::string query_setlockd = Format("UPDATE `logins` SET `muted`='%u', `muted_date`='%u', `muted_unmutedate`='%u', `muted_reason`='%s' WHERE `name`='%s'",
+                                                (unsigned int)muted, date_mute, date_unmute, reason.c_str(), login.c_str());
+        if(SQL_Query(query_setlockd.c_str()) != 0)
+        {
+            SQL_Unlock();
+            return false;
+        }
+
+        if(SQL_AffectedRows() != 1)
+        {
+            SQL_Unlock();
+            return false;
+        }
+
+        SQL_Unlock();
+    }
+    catch(...)
+    {
+        SQL_Unlock();
+        return false;
+    }
+    return true;
+}
+
+bool Login_GetMuted(std::string login, bool& muted, unsigned long& date_mute, unsigned long& date_unmute, std::string& reason)
+{
+    //Printf("Login_GetMuted()\n");
+    if(!SQL_CheckConnected()) return false;
+
+    try
+    {
+        login = SQL_Escape(login);
+
+        SQL_Lock();
+        std::string query_checklgn = Format("SELECT `id`, `muted`, `muted_date`, `muted_unmutedate`, `muted_reason` FROM `logins` WHERE `name`='%s'", login.c_str());
+        if(SQL_Query(query_checklgn.c_str()) != 0)
+        {
+            SQL_Unlock();
+            return false;
+        }
+        MYSQL_RES* result = SQL_StoreResult();
+        if(!result)
+        {
+            SQL_Unlock();
+            return false;
+        }
+
+        if(!SQL_NumRows(result))
+        {
+            SQL_Unlock();
+            SQL_FreeResult(result);
+            return false; // login does not exist
+        }
+
+        MYSQL_ROW row = SQL_FetchRow(result);
+        muted = (SQL_FetchInt(row, result, "muted"));
+        date_mute = SQL_FetchInt(row, result, "muted_date");
+        date_unmute = SQL_FetchInt(row, result, "muted_unmutedate");
+        reason = SQL_FetchString(row, result, "muted_reason");
         SQL_FreeResult(result);
         SQL_Unlock();
 
@@ -586,15 +723,15 @@ bool Login_SetCharacter(std::string login, unsigned long id1, unsigned long id2,
             if(create)
             {
                 chr_query_create1 = Format("INSERT INTO `characters` (`login_id`, `retarded`, `body`, `reaction`, `mind`, `spirit`, \
-                                           `mainskill`, `picture`, `class`, `id1`, `id2`, `nick`, `clan`, `deleted`) VALUES \
-                                           ('%u', '1', '%u', '%u', '%u', '%u', '%u', '%u', '%u', '%u', '%u', '%s', '%s', '0')", login_id,
+                                           `mainskill`, `picture`, `class`, `id1`, `id2`, `nick`, `clan`, `clantag`, `deleted`) VALUES \
+                                           ('%u', '1', '%u', '%u', '%u', '%u', '%u', '%u', '%u', '%u', '%u', '%s', '%s', '', '0')", login_id,
                                                 p_body, p_reaction, p_mind, p_spirit, p_base, p_picture, p_sex, p_id1, p_id2,
                                                 p_nick.c_str(), p_clan.c_str());
             }
             else
             {
                 chr_query_create1 = Format("UPDATE `characters` SET `login_id`='%u' `retarded`='1', `body`='%u', `reaction`='%u', `mind`='%u', `spirit`='%u', \
-                                           `mainskill`='%u', `picture`='%u', `class`='%u', `id1`='%u', `id2`='%u', `nick`='%s', `clan`='%s', `deleted`='0'", login_id,
+                                           `mainskill`='%u', `picture`='%u', `class`='%u', `id1`='%u', `id2`='%u', `nick`='%s', `clan`='%s', `clantag`='', `deleted`='0'", login_id,
                                                 p_body, p_reaction, p_mind, p_spirit, p_base, p_picture, p_sex, p_id1, p_id2,
                                                 p_nick.c_str(), p_clan.c_str());
             }
@@ -620,6 +757,18 @@ bool Login_SetCharacter(std::string login, unsigned long id1, unsigned long id2,
                 return false;
             }
 
+            if(chr.Clan.size() > 0)
+            {
+                int cpos = chr.Clan.find("[");
+                if(cpos >= 0)
+                {
+                    if(cpos > 0 && chr.Clan[cpos-1] == '|')
+                        cpos--;
+                    chr.Clan = std::string(chr.Clan);
+                    chr.Clan.erase(cpos);
+                }
+            }
+
             std::string chr_query_update;
 
             std::vector<uint8_t>& data_40A40A40 = chr.Section40A40A40.GetBuffer();
@@ -637,7 +786,7 @@ bool Login_SetCharacter(std::string login, unsigned long id1, unsigned long id2,
                                                 `spells`, `active_spell`, `money`, \
                                                 `exp_fire_blade`, `exp_water_axe`, \
                                                 `exp_air_bludgeon`, `exp_earth_pike`, \
-                                                `exp_astral_shooting`, `bag`, `dress`, \
+                                                `exp_astral_shooting`, `bag`, `dress`, `clantag`, \
                                                 `sec_55555555`, `sec_40A40A40`, `retarded`, `deleted`) VALUES ( \
                                                     '%u', '%u', '%u', '%u', \
                                                     '%u', '%u', '%u', \
@@ -647,7 +796,7 @@ bool Login_SetCharacter(std::string login, unsigned long id1, unsigned long id2,
                                                     '%u', '%u', '%u', '%u', \
                                                     '%u', '%u', '%u', \
                                                     '%u', '%u', '%u', '%u', '%u', \
-                                                    '%s', '%s', '",
+                                                    '%s', '%s', '%s', '",
                                                         login_id, chr.Id1, chr.Id2, chr.HatId,
                                                         chr.UnknownValue1, chr.UnknownValue2, chr.UnknownValue3,
                                                         SQL_Escape(chr.Nick).c_str(), SQL_Escape(chr.Clan).c_str(),
@@ -658,7 +807,7 @@ bool Login_SetCharacter(std::string login, unsigned long id1, unsigned long id2,
                                                         chr.ExpFireBlade, chr.ExpWaterAxe,
                                                         chr.ExpAirBludgeon, chr.ExpEarthPike,
                                                         chr.ExpAstralShooting,
-                                                        Login_SerializeItems(chr.Bag).c_str(), Login_SerializeItems(chr.Dress).c_str());
+                                                        Login_SerializeItems(chr.Bag).c_str(), Login_SerializeItems(chr.Dress).c_str(), SQL_Escape(chr.ClanTag).c_str());
 
                 for(size_t i = 0; i < data_55555555.size(); i++)
                 {
@@ -724,6 +873,8 @@ bool Login_SetCharacter(std::string login, unsigned long id1, unsigned long id2,
 
             if(SQL_Query(chr_query_update) != 0)
             {
+                Printf(LOG_Error, "[SQL] %s\n", SQL_Error().c_str());
+
                 SQL_Unlock();
                 return false;
             }
@@ -734,6 +885,8 @@ bool Login_SetCharacter(std::string login, unsigned long id1, unsigned long id2,
     }
     catch(...)
     {
+        Printf(LOG_Error, "[SQL] Caught\n");
+
         SQL_Unlock();
         return false;
     }
@@ -836,6 +989,7 @@ bool Login_GetCharacter(std::string login, unsigned long id1, unsigned long id2,
             chr.UnknownValue3 = SQL_FetchInt(row, result, "unknown_value_3");
             chr.Nick = SQL_FetchString(row, result, "nick");
             chr.Clan = SQL_FetchString(row, result, "clan");
+            chr.ClanTag = SQL_FetchString(row, result, "clantag");
             chr.Picture = SQL_FetchInt(row, result, "picture");
             chr.Body = SQL_FetchInt(row, result, "body");
             chr.Reaction = SQL_FetchInt(row, result, "reaction");
@@ -969,6 +1123,7 @@ bool Login_GetCharacter(std::string login, unsigned long id1, unsigned long id2,
         chr.UnknownValue3 = SQL_FetchInt(row, result, "unknown_value_3");
         chr.Nick = SQL_FetchString(row, result, "nick");
         chr.Clan = SQL_FetchString(row, result, "clan");
+        chr.ClanTag = SQL_FetchString(row, result, "clantag");
         chr.Picture = SQL_FetchInt(row, result, "picture");
         chr.Body = SQL_FetchInt(row, result, "body");
         chr.Reaction = SQL_FetchInt(row, result, "reaction");
@@ -1016,7 +1171,7 @@ bool Login_GetCharacter(std::string login, unsigned long id1, unsigned long id2,
     return true;
 }
 
-bool Login_GetCharacterList(std::string login, std::vector<CharacterInfo>& info, bool softcore)
+bool Login_GetCharacterList(std::string login, std::vector<CharacterInfo>& info, int hatId)
 {
     //Printf("Login_GetCharacterList()\n");
     info.clear();
@@ -1058,7 +1213,7 @@ bool Login_GetCharacterList(std::string login, std::vector<CharacterInfo>& info,
         }
 
         std::string query_character = Format("SELECT `id1`, `id2` FROM `characters` WHERE `login_id`='%d' AND `deleted`='0' AND `retarded`='0'", login_id);
-        /*if(!softcore) */query_character += Format(" AND (`hat_id`='%d' or (`id2`&0x3F000000)=0x3F000000)", (softcore ? Config::HatIDSoftcore : Config::HatID));
+        if (hatId > 0) query_character += Format(" AND (`hat_id`='%d' or (`id2`&0x3F000000)=0x3F000000)", hatId);
         if(SQL_Query(query_character.c_str()) != 0)
         {
             SQL_Unlock();
@@ -1167,7 +1322,7 @@ std::string RegexEscape(char what)
     return retval;
 }
 
-bool Login_NickExists(std::string nickname, bool softcore)
+bool Login_NickExists(std::string nickname, int hatId)
 {
     //Printf("Login_NickExists()\n");
     if(!SQL_CheckConnected()) return false;
@@ -1199,7 +1354,8 @@ bool Login_NickExists(std::string nickname, bool softcore)
         //Printf(LOG_Info, "Resulting nickname: %s\n", nickname.c_str());
 
         SQL_Lock();
-        std::string query_nickheck = Format("SELECT `nick` FROM `characters` WHERE `nick` REGEXP '^%s$' AND `deleted`='0' AND `hat_id`='%d'", nickname.c_str(), (softcore ? Config::HatIDSoftcore : Config::HatID));
+        std::string query_nickheck = Format("SELECT `nick` FROM `characters` WHERE `nick` REGEXP '^%s$' AND `deleted`='0'", nickname.c_str());
+        if (hatId > 0) query_nickheck += Format(" AND `hat_id`='%d'", hatId);
         if(SQL_Query(query_nickheck.c_str()) != 0)
         {
             SQL_Unlock();
@@ -1428,6 +1584,32 @@ bool Login_SetIPF(std::string login, std::string ipf)
         }
 
         if(!SQL_AffectedRows())
+        {
+            SQL_Unlock();
+            return false;
+        }
+
+        SQL_Unlock();
+        return true;
+    }
+    catch(...)
+    {
+        SQL_Unlock();
+        return false;
+    }
+}
+
+bool Login_LogAuthentication(std::string login, std::string ip, std::string uuid)
+{
+    try
+    {
+        login = SQL_Escape(login);
+        ip = SQL_Escape(ip);
+        uuid = SQL_Escape(uuid);
+
+        SQL_Lock();
+        std::string query_logauth = Format("INSERT INTO `authlog` (`login_name`, `ip`, `uuid`, `date`) VALUES ('%s', '%s', '%s', NOW())", login.c_str(), ip.c_str(), uuid.c_str());
+        if (SQL_Query(query_logauth.c_str()) != 0)
         {
             SQL_Unlock();
             return false;

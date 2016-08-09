@@ -23,6 +23,8 @@ std::string SQL_Escape(std::string string);
 void SQL_Lock();
 void SQL_Unlock();
 
+std::string SQL_Error();
+
 void SQL_DropTables();
 void SQL_CreateTables();
 

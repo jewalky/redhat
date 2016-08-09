@@ -92,6 +92,8 @@ class CCharacter
         BinaryStream Section40A40A40;
 
         bool Retarded;
+
+        std::string ClanTag;
 };
 
 #endif // CCHARACTER_HPP_INCLUDED

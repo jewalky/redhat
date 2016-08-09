@@ -73,8 +73,6 @@
 		<Unit filename="socket.hpp" />
 		<Unit filename="sql.cpp" />
 		<Unit filename="sql.hpp" />
-		<Unit filename="sqlib.cpp" />
-		<Unit filename="sqlib.hpp" />
 		<Unit filename="status.cpp" />
 		<Unit filename="status.hpp" />
 		<Unit filename="utils.cpp" />

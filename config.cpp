@@ -14,6 +14,7 @@ namespace Config
     bool AutoRegister = false;
     unsigned long HatID = 1000;
     unsigned long HatIDSoftcore = 2000;
+    unsigned long HatIDSandbox = 3000;
 
     std::string HatAddress = "0.0.0.0";
     unsigned short HatPort = 8000;
@@ -23,6 +24,8 @@ namespace Config
     unsigned long AcceptBacklog = 64;
     unsigned long SendTimeout = 15;
     unsigned long RecvTimeout = 15;
+    unsigned long ClientTimeout = 5;
+    unsigned long ClientActiveTimeout = 60;
 
     std::string PathPlayernum = "playernum.txt";
     std::string PathStatus = "playerstat.xml";
@@ -222,6 +225,16 @@ bool ReadConfig(std::string filename)
                     if(CheckInt(value))
                         Config::HatID = StrToInt(value);
                 }
+                else if(parameter == "hatidsoftcore")
+                {
+                    if(CheckInt(value))
+                        Config::HatIDSoftcore = StrToInt(value);
+                }
+                else if(parameter == "hatidsandbox")
+                {
+                    if(CheckInt(value))
+                        Config::HatIDSandbox = StrToInt(value);
+                }
                 else if(parameter == "usefirewall")
                 {
                     if(CheckBool(value))
@@ -269,6 +282,16 @@ bool ReadConfig(std::string filename)
                 {
                     if(CheckInt(value))
                         Config::RecvTimeout = StrToInt(value);
+                }
+                else if(parameter == "clienttimeout")
+                {
+                    if(CheckInt(value))
+                        Config::ClientTimeout = StrToInt(value);
+                }
+                else if(parameter == "clientactivetimeout")
+                {
+                    if(CheckInt(value))
+                        Config::ClientActiveTimeout = StrToInt(value);
                 }
             }
             else if(section == "settings.status")

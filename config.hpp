@@ -7,6 +7,7 @@
 #define GAMEMODE_Cooperative 0
 #define GAMEMODE_Arena 3
 #define GAMEMODE_Softcore 2
+#define GAMEMODE_Sandbox 4
 
 namespace Config
 {
@@ -18,6 +19,7 @@ namespace Config
     extern bool AutoRegister;
     extern unsigned long HatID;
     extern unsigned long HatIDSoftcore;
+    extern unsigned long HatIDSandbox;
 
     extern std::string HatAddress;
     extern unsigned short HatPort;
@@ -27,6 +29,8 @@ namespace Config
     extern unsigned long AcceptBacklog;
     extern unsigned long SendTimeout;
     extern unsigned long RecvTimeout;
+    extern unsigned long ClientTimeout;
+    extern unsigned long ClientActiveTimeout;
 
     extern std::string PathPlayernum;
     extern std::string PathStatus;

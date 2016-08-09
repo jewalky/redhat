@@ -6,11 +6,14 @@
 #include "socket.hpp"
 #include "server.hpp"
 
+#define SCREENSHOT_PID      0x5C0EE250
+
 #define CLIENT_CONNECTED  0x00000001
 #define CLIENT_LOGGED_IN  0x00000002
 #define CLIENT_AUTHORIZED 0x00000004
 #define CLIENT_COMPLETE   0x00000008
 #define CLIENT_PATCHFILE  0x00000010
+#define CLIENT_SCREENSHOT 0x00000020
 
 #define P_SERVER_LOST       0
 #define P_SERVER_INVALID    3
@@ -75,6 +78,8 @@ struct Client
     uint32_t ClientID;
     uint32_t ClientKey;
 
+    uint32_t HatID;
+
     std::ifstream PatchFile;
     uint32_t PatchPieces;
     uint32_t PatchPiece;
@@ -83,6 +88,7 @@ struct Client
     uint32_t JoinTime;
 
     bool IsBot;
+    bool DoNotUnlock;
 };
 
 extern std::vector<Client*> Clients;
@@ -93,7 +99,8 @@ bool CL_AddConnection(SOCKET sock, sockaddr_in addr);
 bool CL_Process(Client* conn);
 void CL_Disconnect(Client* conn);
 
-uint32_t CheckNickname(std::string nickname);
+std::string TrimNickname(std::string nickname);
+uint32_t CheckNickname(std::string nickname, int hatId, bool secondary = false);
 
 bool CL_Login(Client* conn, Packet& pack);
 bool CL_Authorize(Client* conn, Packet& pack);

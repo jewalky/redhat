@@ -139,7 +139,7 @@ Login::~Login()
 bool Login_Create(std::string login, std::string password);
 bool Login_SetCharacter(std::string login, unsigned long id1, unsigned long id2, unsigned long size, char* data, std::string nickname);
 bool Login_SetIPF(std::string login, std::string ipf);
-bool Login_SetLocked(std::string login, bool locked, unsigned long id1, unsigned long id2, unsigned long srvid);
+bool Login_SetLocked(std::string login, bool locked_hat, bool locked, unsigned long id1, unsigned long id2, unsigned long srvid);
 #include "utils.hpp"
 
 void LGN_DBConvert(std::string directory)
@@ -193,7 +193,7 @@ void LGN_DBConvert(std::string directory)
                     continue;
                 }
 
-                if(!Login_SetLocked(login, lgn.Locked, lgn.LockedID1, lgn.LockedID2, lgn.ServerID))
+                if(!Login_SetLocked(login, false, lgn.Locked, lgn.LockedID1, lgn.LockedID2, lgn.ServerID))
                     Printf(LOG_Warning, "[CB] Warning: couldn't lock login %s.\n", login.c_str());
 
                 if(ipf.length())

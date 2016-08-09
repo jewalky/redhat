@@ -37,10 +37,67 @@ bool CL_AddConnection(SOCKET socket, sockaddr_in addr)
     cl->JoinTime = GetTickCount();
     cl->IsBot = false;
 
+    cl->DoNotUnlock = false;
+
     Printf(LOG_Trivial, "[CL] %s - Connected.\n", cl->HisAddr.c_str());
 
     Clients.push_back(cl);
     return true;
+}
+
+bool CL_Screenshot(Client* conn, Packet& pack)
+{
+    std::string login;
+    uint32_t uid;
+    uint8_t status;
+    std::string url;
+
+    pack >> login;
+    pack >> uid;
+    pack >> status;
+
+    if (status)
+        pack >> url;
+
+    uint32_t server_id = (uid & 0xFFFF0000) >> 16;
+    Server* server = NULL;
+
+    for(std::vector<Server*>::iterator it = Servers.begin(); it != Servers.end(); ++it)
+    {
+        Server* srv = (*it);
+        if(!srv) continue;
+
+        if (srv->Port == server_id)
+        {
+            server = srv;
+            break;
+        }
+    }
+
+    if (!server)
+    {
+        Printf(LOG_Error, "[CL] %s (%s) - Client tried to send a screenshot for unknown server, ignoring.\n", conn->HisAddr.c_str(), login.c_str());
+        return false;
+    }
+
+    conn->SessionServer = server;
+    conn->SessionID1 = uid;
+
+    if (status == 0)
+    {
+        Printf(LOG_Info, "[CL] %s (%s) - Client is sending a screenshot from server ID %u.\n", conn->HisAddr.c_str(), login.c_str(), server->Number);
+        SLCMD_Screenshot(server, login, uid, false, "");
+        conn->Login = login;
+        conn->Flags |= CLIENT_SCREENSHOT;
+        return true;
+    }
+    else
+    {
+        Printf(LOG_Info, "[CL] %s (%s) - Client sent a screenshot (located in \"%s\") to server ID %u.\n", conn->HisAddr.c_str(), login.c_str(), url.c_str(), server->Number);
+        SLCMD_Screenshot(server, login, uid, true, url);
+        conn->SessionServer = NULL;
+        return false;
+    }
 }
 
 bool CL_Process(Client* conn)
@@ -48,10 +105,21 @@ bool CL_Process(Client* conn)
     if(!(conn->Flags & CLIENT_CONNECTED)) return false;
     if(!conn->Socket) return false;
     if(!conn->Receiver.Receive(conn->Version)) return false;
-    if(GetTickCount()-conn->JoinTime > 5000 && !(conn->Flags & (CLIENT_LOGGED_IN|CLIENT_PATCHFILE)))
+
+    // inactive kick
+    if(GetTickCount()-conn->JoinTime > (Config::ClientTimeout*1000) && !(conn->Flags & (CLIENT_LOGGED_IN|CLIENT_PATCHFILE)))
     {
-        Printf(LOG_Warning, "[CL] %s - Client timed out.\n", conn->HisAddr.c_str());
-        return false; // todo: add timeout to config
+        Printf(LOG_Warning, "[CL] %s - Client has timed out.\n", conn->HisAddr.c_str());
+        CLCMD_Kick(conn, P_FHTAGN);
+        return false;
+    }
+
+    // active kick
+    if(GetTickCount()-conn->JoinTime > (Config::ClientActiveTimeout*1000) && !(conn->Flags & (CLIENT_PATCHFILE)))
+    {
+        Printf(LOG_Warning, "[CL] %s%s - Client (active) has timed out.\n", conn->HisAddr.c_str(), (conn->Login.length() ? Format(" (%s)", conn->Login.c_str()).c_str() : ""));
+        CLCMD_Kick(conn, P_FHTAGN);
+        return false;
     }
 
     if((conn->Flags & CLIENT_LOGGED_IN) &&
@@ -60,9 +128,27 @@ bool CL_Process(Client* conn)
     Packet pack;
     while(conn->Receiver.GetPacket(pack))
     {
+        // check 0x5C0EE250
+        uint32_t packet_uid;
+        pack >> packet_uid;
+        if ((packet_uid == SCREENSHOT_PID) && (conn->Flags == CLIENT_CONNECTED || (conn->Flags & CLIENT_SCREENSHOT)))
+        {
+            if (!CL_Screenshot(conn, pack))
+                return false;
+            continue;
+        }
+        else if ((packet_uid != SCREENSHOT_PID) && (conn->Flags & CLIENT_SCREENSHOT))
+        {
+            Printf(LOG_Error, "[CL] %s (%s) - Client sent unexpected packet while in screenshot state.\n", conn->HisAddr.c_str(), conn->Login.c_str());
+            return false;
+        }
+
+        pack.ResetPosition();
+
         if(!(conn->Flags & CLIENT_LOGGED_IN))
         {
-            if(!CL_Login(conn, pack)) return false;
+            if(!CL_Login(conn, pack))
+                return false;
             continue;
         }
 
@@ -193,16 +279,38 @@ bool CL_ServerProcess(Client* conn)
         return false;
     }
 
-    Login_SetLocked(conn->Login, true, conn->SessionID1, conn->SessionID2, conn->SessionServer->Number);
+    Login_SetLocked(conn->Login, false, true, conn->SessionID1, conn->SessionID2, conn->SessionServer->Number);
     if(!CLCMD_EnterSuccess(conn, conn->SessionID1, conn->SessionID2))
         return false;
     Printf(LOG_Info, "[CL] %s (%s) - Character \"%s\" entered server ID %u.\n", conn->HisAddr.c_str(), conn->Login.c_str(), conn->SessionNickname.c_str(), conn->SessionServer->Number);
+
+    bool l_muted = false;
+    unsigned long l_muted_date;
+    unsigned long l_muted_unmutedate;
+    std::string l_reason;
+    if (!Login_GetMuted(conn->Login, l_muted, l_muted_date, l_muted_unmutedate, l_reason))
+    {
+        Printf(LOG_Error, "[DB] Error: Login_GetMuted(\"%s\", ...).\n", conn->Login.c_str());
+        l_muted = false;
+    }
+
+    if (l_muted && l_muted_unmutedate > time(NULL))
+    {
+        Printf(LOG_Info, "[CL] %s (%s) - Character should be muted (reason: %s).\n", conn->HisAddr.c_str(), conn->Login.c_str(), l_reason.c_str());
+        SLCMD_MutePlayer(conn->SessionServer, conn->Login, l_muted_unmutedate);
+    }
+
     return false;
 }
 
 void CL_Disconnect(Client* conn)
 {
+    if ((conn->Flags & CLIENT_SCREENSHOT) && conn->SessionServer)
+        SLCMD_Screenshot(conn->SessionServer, conn->Login, conn->SessionID1, true, "");
+
     Printf(LOG_Trivial, "[CL] %s%s - Disconnected.\n", conn->HisAddr.c_str(), (conn->Login.length() ? Format(" (%s)", conn->Login.c_str()).c_str() : ""));
+    if(!conn->DoNotUnlock && conn->Login.length() && !Login_UnlockOne(conn->Login))
+        Printf(LOG_Error, "[DB] Error: Login_UnlockOne(\"%s\").\n", conn->Login.c_str());
     SOCK_Destroy(conn->Socket);
     conn->Socket = 0;
     conn->Flags &= ~CLIENT_CONNECTED;
@@ -401,7 +509,7 @@ bool CL_Login(Client* conn, Packet& pack)
             crcstr += Format("a2mgr.dll: %08X", lrc_a2mgr_dll);
             badcrc = true;
         }
-
+/*
         if(std::find(Config::PatchCRC.begin(), Config::PatchCRC.end(), lrc_patch_res) == Config::PatchCRC.end())
         {
             if(badcrc) crcstr += "; ";
@@ -414,7 +522,7 @@ bool CL_Login(Client* conn, Packet& pack)
             if(badcrc) crcstr += "; ";
             crcstr += Format("world.res: %08X", lrc_world_res);
             badcrc = true;
-        }
+        }*/
 
         /*if(std::find(Config::GraphicsCRC.begin(), Config::GraphicsCRC.end(), lrc_graphics_res) == Config::GraphicsCRC.end())
         {
@@ -460,12 +568,23 @@ bool CL_Login(Client* conn, Packet& pack)
     uint8_t p_gamemode = (uoth & 0x00FF0000) >> 16;
     uint16_t p_loginlen = (uoth & 0x0000FFFF);
 
-    if(p_gamemode != GAMEMODE_Arena && p_gamemode != GAMEMODE_Cooperative && p_gamemode != GAMEMODE_Softcore)
+    if(p_gamemode != GAMEMODE_Arena &&
+       p_gamemode != GAMEMODE_Cooperative &&
+       p_gamemode != GAMEMODE_Softcore &&
+       p_gamemode != GAMEMODE_Sandbox)
     {
         Printf(LOG_Error, "[CL] %s - Bad game mode %u.\n", conn->HisAddr.c_str(), p_gamemode);
         CLCMD_Kick(conn, P_BAD_GAMEMODE);
         return false;
     }
+
+    if (p_gamemode == GAMEMODE_Softcore)
+        conn->HatID = Config::HatIDSoftcore;
+    else if (p_gamemode == GAMEMODE_Sandbox)
+        conn->HatID = Config::HatIDSandbox;
+    else if (p_gamemode == GAMEMODE_Arena)
+        conn->HatID = 0xFFFFFFFF;
+    else conn->HatID = Config::HatID;
 
     if(conn->IsBot) // ex-lend
     {
@@ -571,11 +690,11 @@ bool CL_Login(Client* conn, Packet& pack)
         }
     }
 
-    bool l_locked;
+    bool l_locked_hat, l_locked;
     unsigned long l_id1, l_id2, l_srvid;
-    if(!Login_GetLocked(s_login, l_locked, l_id1, l_id2, l_srvid))
+    if(!Login_GetLocked(s_login, l_locked_hat, l_locked, l_id1, l_id2, l_srvid))
     {
-        Printf(LOG_Error, "[DB] Error: Login_GetLocked(\"%s\", <locked>, <id1>, <id2>, <srvid>).\n", s_login.c_str());
+        Printf(LOG_Error, "[DB] Error: Login_GetLocked(\"%s\", <locked_hat>, <locked>, <id1>, <id2>, <srvid>).\n", s_login.c_str());
         CLCMD_Kick(conn, P_UPDATE_ERROR);
         return false;
     }
@@ -640,13 +759,6 @@ bool CL_Login(Client* conn, Packet& pack)
                     return false;
                 }
 
-                if((((srv->Info.ServerMode & SVF_SOFTCORE) == SVF_SOFTCORE) != (p_gamemode == GAMEMODE_Softcore)) || (((srv->Info.ServerMode & SVF_SOFTCORE) != SVF_SOFTCORE) && (srv->Info.GameMode != p_gamemode)))
-                {
-                    Printf(LOG_Error, "[CL] %s (%s) - Locked on server ID %u with different game mode (%u != %u)!\n", conn->HisAddr.c_str(), s_login.c_str(), srv->Number, p_gamemode, srv->Info.GameMode);
-                    CLCMD_Kick(conn, P_WRONG_GAMEMODE);
-                    return false;
-                }
-
                 if(srv->Info.ServerCaps & SERVER_CAP_DETAILED_INFO)
                 {
                     bool char_on_server = false;
@@ -674,18 +786,27 @@ bool CL_Login(Client* conn, Packet& pack)
                     /// ДЮП!!!!!
                     // todo: пофиксить проверку логинов на сервере!
                     /// сервера сохраняют персонажей напрямую в базу, вернули на место
+                    /// 19.06.2014 - это что я имел в виду? (и главное, когда?)
                 }
 
                 if(r_cancel_lock)
                 {
-                    l_locked = false;
-                    if(!Login_SetLocked(s_login, false, 0, 0, 0))
+                    /*l_locked = false;
+                    if(!Login_SetLocked(s_login, true, false, 0, 0, 0))
                     {
-                        Printf(LOG_Error, "[DB] Error: Login_SetLocked(\"%s\", <locked>, <id1>, <id2>, <srvid).\n", s_login.c_str());
+                        Printf(LOG_Error, "[DB] Error: Login_SetLocked(\"%s\", <locked>, <id1>, <id2>, <srvid>).\n", s_login.c_str());
                         CLCMD_Kick(conn, P_UPDATE_ERROR);
                         return false;
-                    }
+                    }*/
                     break;
+                }
+
+                //if((((srv->Info.ServerMode & SVF_SOFTCORE) == SVF_SOFTCORE) != (p_gamemode == GAMEMODE_Softcore)) || (((srv->Info.ServerMode & SVF_SOFTCORE) != SVF_SOFTCORE) && (srv->Info.GameMode != p_gamemode)))
+                if (srv->Info.GameMode != p_gamemode)
+                {
+                    Printf(LOG_Error, "[CL] %s (%s) - Locked on server ID %u with different game mode (%u != %u)!\n", conn->HisAddr.c_str(), s_login.c_str(), srv->Number, p_gamemode, srv->Info.GameMode);
+                    CLCMD_Kick(conn, P_WRONG_GAMEMODE);
+                    return false;
                 }
 
                 char* c_data = NULL;
@@ -730,9 +851,87 @@ bool CL_Login(Client* conn, Packet& pack)
             return false;
         }
     }
+    else
+    {
+        // login is not locked, but hat-locked (is online)
+        if(l_locked_hat)
+        {
+            // check if the client is actually online (most likely) and destroy the instance
+            for(size_t i = 0; i < Clients.size(); i++)
+            {
+                if(Clients[i] == conn) continue;
+                if(Clients[i]->Login == s_login)
+                {
+                    Printf(LOG_Error, "[CL] %s (%s) - Discarding connection (logged in again).\n", Clients[i]->HisAddr.c_str(), s_login.c_str());
+                    CLCMD_Kick(Clients[i], P_LOGIN_EXISTS);
+                    SOCK_Destroy(Clients[i]->Socket);
+                    Clients[i]->DoNotUnlock = true;
+                }
+            }
+
+            //Printf(LOG_Error, "[CL] %s (%s) - Login is hat-locked, rejecting.\n", conn->HisAddr.c_str(), s_login.c_str());
+            //CLCMD_Kick(conn, P_LOGIN_EXISTS);
+            //return false;
+        }
+
+        l_locked_hat = false;
+
+        // 19.06.2014 dupe fix
+        for(std::vector<Server*>::iterator it = Servers.begin(); it != Servers.end(); ++it)
+        {
+            Server* srv = (*it);
+            if(!srv) continue;
+
+            if(!srv->Connection || !srv->Connection->Active)
+                continue; // вот тут всё равно есть шанс пролезть сквозь проверку... хотя по идее тогда не пустит
+
+            if(srv->Info.ServerCaps & SERVER_CAP_DETAILED_INFO)
+            {
+                bool char_on_server = false;
+                for(std::vector<ServerPlayer>::iterator jt = srv->Info.Players.begin(); jt != srv->Info.Players.end(); ++jt)
+                {
+                    ServerPlayer& player = (*jt);
+                    if(player.Login == s_login && player.Id1 == l_id1 && player.Id2 == l_id2)
+                        char_on_server = true;
+                }
+
+                for(std::vector<std::string>::iterator jt = srv->Info.Locked.begin(); jt != srv->Info.Locked.end(); ++jt)
+                {
+                    std::string& login = (*jt);
+                    if(login == s_login)
+                        char_on_server = true;
+                }
+
+                //if(!char_on_server && srv->Info.Time <= 15) char_on_server = true; /// убрано: люди не смогут входить на хэт во время смены любой карты
+
+                if(char_on_server)
+                {
+                    Printf(LOG_Error, "[CL] %s (%s) - Bug: login unlocked but still ingame (playing on server ID %u)!\n", conn->HisAddr.c_str(), s_login.c_str(), srv->Number);
+                    //CLCMD_Kick(conn, P_FHTAGN);
+                    CLCMD_Kick(conn, P_LOGIN_EXISTS); // я не помню, что это... скорее всего "ваш логин уже в игре"
+                    return false;
+                }
+            }
+        }
+    }
+
+    if(!Login_SetLocked(s_login, true, false, 0, 0, 0))
+    {
+        Printf(LOG_Error, "[DB] Error: Login_SetLocked(\"%s\", <locked_hat>, <locked>, <id1>, <id2>, <srvid>).\n", s_login.c_str());
+        Printf(LOG_Error, "[DB] %s\n", SQL_Error().c_str());
+        CLCMD_Kick(conn, P_UPDATE_ERROR);
+        return false;
+    }
 
     Printf(LOG_Info, "[CL] %s (%s) - Logged in successfully.\n", conn->HisAddr.c_str(), s_login.c_str());
     Printf(LOG_Info, "[CL] %s (%s) - UUID: %s.\n", conn->HisAddr.c_str(), s_login.c_str(), uuid.c_str());
+    if (!Login_LogAuthentication(s_login, conn->HisIP, uuid))
+    {
+        Printf(LOG_Error, "[DB] Error: Login_LogAuthentication(\"%s\", \"%s\", \"%s\").\n", s_login.c_str(), conn->HisIP.c_str(), uuid.c_str());
+        //CLCMD_Kick(conn, P_UPDATE_ERROR);
+        //return false;
+    }
+
     conn->Login = s_login;
     conn->GameMode = p_gamemode;
     conn->Flags |= CLIENT_LOGGED_IN;
@@ -773,7 +972,7 @@ bool CLCMD_SendCharacterList(Client* conn)
     std::vector<CharacterInfo> chars;
     if(!conn->IsBot)
     {
-        if(!Login_GetCharacterList(conn->Login, chars, (conn->GameMode == GAMEMODE_Softcore)))
+        if(!Login_GetCharacterList(conn->Login, chars, conn->HatID))
         {
             Printf(LOG_Error, "[DB] Error: Login_GetCharacterList(\"%s\", <info>).\n", conn->Login.c_str());
             CLCMD_Kick(conn, P_UPDATE_ERROR);
@@ -850,10 +1049,12 @@ bool CLCMD_SendServerList(Client* conn)
         if(!srv) continue;
         if(!srv->Connection) continue;
         if(!srv->Connection->Active) continue;
+        /*
         if(srv->Info.GameMode != conn->GameMode &&
            conn->GameMode != GAMEMODE_Softcore) continue;
         if((conn->GameMode == GAMEMODE_Softcore) !=
-           ((srv->Info.ServerMode & SVF_SOFTCORE) == SVF_SOFTCORE)) continue;
+           ((srv->Info.ServerMode & SVF_SOFTCORE) == SVF_SOFTCORE)) continue;*/
+        if (srv->Info.GameMode != conn->GameMode) continue;
 
         std::string srv_name = srv->Name.c_str();
         std::string map_name = srv->Info.MapName;
@@ -865,8 +1066,8 @@ bool CLCMD_SendServerList(Client* conn)
             //unsigned long tm_s = tme - (tm_h * 3600 + tm_m * 60);
             srv_name = Format("[%u:%02u] %s", tm_h, tm_m, srv_name.c_str());
 
-            if(srv->Info.ServerMode & 2)
-                map_name = "PvM: " + map_name;
+            //if(srv->Info.ServerMode & 2)
+            //    map_name = "PvM: " + map_name;
         }
 
         list += Format("|%s|1.02|%s|%ux%u|%u|%u|%s:%u\n", srv_name.c_str(),
@@ -883,11 +1084,23 @@ bool CLCMD_SendServerList(Client* conn)
     pack << (uint32_t)list.length();
     pack.AppendData((uint8_t*)list.c_str(), (uint32_t)list.length()+1);
 
-    (SOCK_SendPacket(conn->Socket, pack, conn->Version) == 0);
-    return true;
+    return (SOCK_SendPacket(conn->Socket, pack, conn->Version) == 0);
 }
 
-uint32_t CheckNickname(std::string nickname, bool softcore)
+std::string TrimNickname(std::string nickname)
+{
+    size_t clanSep = nickname.find_first_of('|');
+    if (clanSep != std::string::npos)
+    {
+        return Trim(nickname.substr(0, clanSep))+"|"+Trim(nickname.substr(clanSep+1));
+    }
+    else
+    {
+        return Trim(nickname);
+    }
+}
+
+uint32_t CheckNickname(std::string nickname, int hatId, bool secondary)
 {
     size_t w = nickname.find_first_of('|');
     if(w == nickname.npos)
@@ -899,8 +1112,8 @@ uint32_t CheckNickname(std::string nickname, bool softcore)
         return P_WRONG_NAME;
 
     unsigned long result = 0;
-    if(w < 3) result = P_SHORT_NAME;
-    else if(w > 10) result = P_BAD_CHARACTER;
+    if(w < 3 && !secondary) result = P_SHORT_NAME;
+    else if(w > 10 && !secondary) result = P_BAD_CHARACTER;
     else
     {
         for(size_t i = 0; i < nickname.length(); i++)
@@ -932,10 +1145,11 @@ uint32_t CheckNickname(std::string nickname, bool softcore)
                             (ch == '_') ||
                             (ch == '$') ||
                             (ch == '(') || (ch == ')') ||
+                            (ch == '<') || (ch == '>') ||
                             (in_clan && ( // ТОЛЬКО В ПРИПИСАХ
                                 (ch == 0x7F) || // 0x7F квадрат
-                                (ch == '{' || ch == '}' || ch == '|') ||
-                                (ch == '[' || ch == ']') ||
+                                (ch == '{' || ch == '}'/* || ch == '|'*/) ||
+                                //(ch == '[' || ch == ']') ||
                                 (ch == ':' || ch == ';') ||
                                 (ch == '*' || ch == '^') ||
                                 (ch == '#') ||
@@ -946,9 +1160,13 @@ uint32_t CheckNickname(std::string nickname, bool softcore)
         }
     }
 
-    if(w < nickname.length())
-        nickname.erase(w);
-    if(Login_NickExists(nickname, softcore)) result = P_NAME_EXISTS;
+    if(!secondary)
+    {
+        if(w < nickname.length())
+            nickname.erase(w);
+        if(Login_NickExists(nickname, hatId)) result = P_NAME_EXISTS;
+    }
+
     return result;
 }
 
@@ -1055,6 +1273,7 @@ bool CL_EnterServer(Client* conn, Packet& pack)
     pack.GetData((uint8_t*)p_nickname_c, p_nicklen);
     std::string p_nickname(p_nickname_c);
     delete[] p_nickname_c;
+    p_nickname = TrimNickname(p_nickname);
     uint32_t p_srvlen = p_szu - p_nicklen - 16;
     char* p_srvname_c = new char[p_srvlen + 1];
     p_srvname_c[p_srvlen] = 0;
@@ -1062,11 +1281,11 @@ bool CL_EnterServer(Client* conn, Packet& pack)
     std::string p_srvname(p_srvname_c);
     delete[] p_srvname_c;
 
-    bool l_locked;
+    bool l_locked_hat, l_locked;
     unsigned long l_id1, l_id2, l_srvid;
-    if(!Login_GetLocked(conn->Login, l_locked, l_id1, l_id2, l_srvid))
+    if(!Login_GetLocked(conn->Login, l_locked_hat, l_locked, l_id1, l_id2, l_srvid))
     {
-        Printf(LOG_Error, "[DB] Error: Login_GetLocked(\"%s\", <locked>, <id1>, <id2>, <srvid>).\n", conn->Login.c_str());
+        Printf(LOG_Error, "[DB] Error: Login_GetLocked(\"%s\", <locked_hat>, <locked>, <id1>, <id2>, <srvid>).\n", conn->Login.c_str());
         CLCMD_Kick(conn, P_UPDATE_ERROR);
         return false;
     }
@@ -1081,7 +1300,7 @@ bool CL_EnterServer(Client* conn, Packet& pack)
 
     if(is_created)
     {
-        if(CheckNickname(p_nickname, (conn->GameMode == GAMEMODE_Softcore)) != 0)
+        if(CheckNickname(p_nickname, conn->HatID) != 0)
         {
             Printf(LOG_Hacking, "[CL] %s (%s) - Hacking: tried to create bad nickname \"%s\"!\n", conn->HisAddr.c_str(), conn->Login.c_str(), p_nickname.c_str());
             CLCMD_Kick(conn, P_FUCK_OFF);
@@ -1163,9 +1382,10 @@ bool CL_EnterServer(Client* conn, Packet& pack)
     }
     else
     {
-        if(CheckNickname(p_nickname, (conn->GameMode == GAMEMODE_Softcore)) == P_WRONG_NAME)
+        int wrC = 0;
+        if((wrC = (CheckNickname(p_nickname, conn->HatID, true))) != 0)
         {
-            Printf(LOG_Hacking, "[CL] %s (%s) - Hacking: tried to join with bad nickname \"%s\"!\n", conn->HisAddr.c_str(), conn->Login.c_str(), p_nickname.c_str());
+            Printf(LOG_Error, "[CL] %s (%s) - Tried to join with bad nickname \"%s\" (error was %u)!\n", conn->HisAddr.c_str(), conn->Login.c_str(), p_nickname.c_str(), wrC);
             CLCMD_Kick(conn, P_WRONG_NAME);
             return false;
         }
@@ -1181,7 +1401,7 @@ bool CL_EnterServer(Client* conn, Packet& pack)
         std::string addr = Format("%s:%u", srv->Address.c_str(), srv->Port);
         if(addr == p_srvname)
         {
-            if(!is_created && ((p_id2 & 0x3F000000) != 0x3F000000))
+            if(!is_created)
             {
                 CCharacter chrtc;
                 if(!Login_GetCharacter(conn->Login, p_id1, p_id2, chrtc))
@@ -1191,82 +1411,122 @@ bool CL_EnterServer(Client* conn, Packet& pack)
                     return false;
                 }
 
-                bool srv_softcore = ((srv->Info.ServerMode & SVF_SOFTCORE) == SVF_SOFTCORE);
-                if(((chrtc.HatId == Config::HatID) && srv_softcore) ||
-                   ((chrtc.HatId == Config::HatIDSoftcore) && !srv_softcore))
+                //Printf(LOG_Info, "[TT] ClanTag = %s\n", chrtc.ClanTag.c_str());
+
+                if(chrtc.ClanTag.length() > 0)
                 {
-                    Printf(LOG_Hacking, "[CL] %s (%s) - Hacking: character \"%s\" rejected by hat from server ID %u (reason: invalid HatID).\n", conn->HisAddr.c_str(), conn->Login.c_str(), chrtc.Nick.c_str(), srv->Number);
-                    CLCMD_Kick(conn, P_FHTAGN);
-                    return false;
+                    int cpos = p_nickname.find("|");
+
+                    if(cpos >= 0)
+                        p_nickname.erase(cpos);
+
+                    p_nickname += "|["+chrtc.ClanTag+"]";
                 }
 
-                if((srv->Info.ServerMode & SVF_NOOBSRV) == SVF_NOOBSRV)
+                if((p_id2 & 0x3F000000) != 0x3F000000)
                 {
-                    if(chrtc.Spells & ~0x09010422)
+                    int srvHatId;
+                    if (srv->Info.GameMode == GAMEMODE_Softcore)
+                        srvHatId = Config::HatIDSoftcore;
+                    else if (srv->Info.GameMode == GAMEMODE_Sandbox)
+                        srvHatId = Config::HatIDSandbox;
+                    else srvHatId = Config::HatID;
+
+                    if(conn->HatID != 0xFFFFFFFF && ((chrtc.HatId != srvHatId) || (chrtc.HatId != conn->HatID)))
                     {
-                        Printf(LOG_Error, "[CL] %s (%s) - Character \"%s\" rejected by hat from server ID %u (reason: EQuest check - strong spells %08X).\n", conn->HisAddr.c_str(), conn->Login.c_str(), chrtc.Nick.c_str(), srv->Number, chrtc.Spells);
-                        CLCMD_Kick(conn, P_TOO_STRONG);
+                        Printf(LOG_Hacking, "[CL] %s (%s) - Hacking: character \"%s\" rejected by hat from server ID %u (reason: invalid HatID).\n", conn->HisAddr.c_str(), conn->Login.c_str(), chrtc.Nick.c_str(), srv->Number);
+                        CLCMD_Kick(conn, P_FHTAGN);
                         return false;
                     }
 
-                    uint32_t exp_total = 0;
-                    exp_total += chrtc.ExpFireBlade;
-                    exp_total += chrtc.ExpWaterAxe;
-                    exp_total += chrtc.ExpAirBludgeon;
-                    exp_total += chrtc.ExpEarthPike;
-                    exp_total += chrtc.ExpAstralShooting;
-
-                    if(exp_total > 7320)
+                    bool checkenter = !!(srv->Info.ServerMode & (SVF_ENTERMAGE|SVF_ENTERWARRIOR));
+                    if (checkenter)
                     {
-                        Printf(LOG_Error, "[CL] %s (%s) - Character \"%s\" rejected by hat from server ID %u (reason: EQuest check - strong experience %u).\n", conn->HisAddr.c_str(), conn->Login.c_str(), p_nickname.c_str(), srv->Number, exp_total);
-                        CLCMD_Kick(conn, P_TOO_STRONG);
-                        return false;
-                    }
-
-                    float points_total = 132.0;
-                    for(int i = 0; i < chrtc.Body; i++)
-                        points_total -= CL_NeedPointsFrom(i);
-                    for(int i = 0; i < chrtc.Reaction; i++)
-                        points_total -= CL_NeedPointsFrom(i);
-                    for(int i = 0; i < chrtc.Mind; i++)
-                        points_total -= CL_NeedPointsFrom(i);
-                    for(int i = 0; i < chrtc.Spirit; i++)
-                        points_total -= CL_NeedPointsFrom(i);
-
-                    if(points_total < 0)
-                    {
-                        Printf(LOG_Error, "[CL] %s (%s) - Character \"%s\" rejected by hat from server ID %u (reason: EQuest check - strong stats, %.1f points left).\n", conn->HisAddr.c_str(), conn->Login.c_str(), p_nickname.c_str(), srv->Number, points_total);
-                        CLCMD_Kick(conn, P_TOO_STRONG);
-                        return false;
-                    }
-
-                    bool items_ok = true;
-                    for(uint32_t i = 0; i < chrtc.Bag.Items.size(); i++)
-                    {
-                        if(!CL_CheckEasyQuestItem(chrtc.Bag.Items[i]))
+                        if (!(srv->Info.ServerMode & SVF_ENTERMAGE) &&
+                            (chrtc.Sex == 64 || chrtc.Sex == 192))
                         {
-                            items_ok = false;
-                            break;
+                            Printf(LOG_Error, "[CL] %s (%s) - Character \"%s\" rejected by hat from server ID %u (reason: only warriors allowed).\n", conn->HisAddr.c_str(), conn->Login.c_str(), chrtc.Nick.c_str(), srv->Number);
+                            CLCMD_Kick(conn, P_TOO_WEAK); // hue
+                            return false;
+                        }
+
+                        if (!(srv->Info.ServerMode & SVF_ENTERWARRIOR) &&
+                            (chrtc.Sex == 0 || chrtc.Sex == 128))
+                        {
+                            Printf(LOG_Error, "[CL] %s (%s) - Character \"%s\" rejected by hat from server ID %u (reason: only mages allowed).\n", conn->HisAddr.c_str(), conn->Login.c_str(), chrtc.Nick.c_str(), srv->Number);
+                            CLCMD_Kick(conn, P_TOO_STRONG); // hue
+                            return false;
                         }
                     }
 
-                    if(items_ok)
+                    if((srv->Info.ServerMode & SVF_NOOBSRV) == SVF_NOOBSRV)
                     {
-                        for(uint32_t i = 0; i < chrtc.Dress.Items.size(); i++)
+                        if(chrtc.Spells & ~0x09010422)
                         {
-                            if(!CL_CheckEasyQuestItem(chrtc.Dress.Items[i]))
+                            Printf(LOG_Error, "[CL] %s (%s) - Character \"%s\" rejected by hat from server ID %u (reason: EQuest check - strong spells %08X).\n", conn->HisAddr.c_str(), conn->Login.c_str(), chrtc.Nick.c_str(), srv->Number, chrtc.Spells);
+                            CLCMD_Kick(conn, P_TOO_STRONG);
+                            return false;
+                        }
+
+                        uint32_t exp_total = 0;
+                        exp_total += chrtc.ExpFireBlade;
+                        exp_total += chrtc.ExpWaterAxe;
+                        exp_total += chrtc.ExpAirBludgeon;
+                        exp_total += chrtc.ExpEarthPike;
+                        exp_total += chrtc.ExpAstralShooting;
+
+                        if(exp_total > 7320)
+                        {
+                            Printf(LOG_Error, "[CL] %s (%s) - Character \"%s\" rejected by hat from server ID %u (reason: EQuest check - strong experience %u).\n", conn->HisAddr.c_str(), conn->Login.c_str(), p_nickname.c_str(), srv->Number, exp_total);
+                            CLCMD_Kick(conn, P_TOO_STRONG);
+                            return false;
+                        }
+
+                        float points_total = 132.0;
+                        for(int i = 0; i < chrtc.Body; i++)
+                            points_total -= CL_NeedPointsFrom(i);
+                        for(int i = 0; i < chrtc.Reaction; i++)
+                            points_total -= CL_NeedPointsFrom(i);
+                        for(int i = 0; i < chrtc.Mind; i++)
+                            points_total -= CL_NeedPointsFrom(i);
+                        for(int i = 0; i < chrtc.Spirit; i++)
+                            points_total -= CL_NeedPointsFrom(i);
+
+                        if(points_total < 0)
+                        {
+                            Printf(LOG_Error, "[CL] %s (%s) - Character \"%s\" rejected by hat from server ID %u (reason: EQuest check - strong stats, %.1f points left).\n", conn->HisAddr.c_str(), conn->Login.c_str(), p_nickname.c_str(), srv->Number, points_total);
+                            CLCMD_Kick(conn, P_TOO_STRONG);
+                            return false;
+                        }
+
+                        bool items_ok = true;
+                        for(uint32_t i = 0; i < chrtc.Bag.Items.size(); i++)
+                        {
+                            if(!CL_CheckEasyQuestItem(chrtc.Bag.Items[i]))
                             {
                                 items_ok = false;
                                 break;
                             }
                         }
-                    }
 
-                    if(!items_ok)
-                    {
-                        Printf(LOG_Error, "[CL] %s (%s) - Character \"%s\" rejected by hat from server ID %u (reason: EQuest check - strong items).\n", conn->HisAddr.c_str(), conn->Login.c_str(), p_nickname.c_str(), srv->Number);
-                        CLCMD_Kick(conn, P_TOO_STRONG);
-                        return false;
+                        if(items_ok)
+                        {
+                            for(uint32_t i = 0; i < chrtc.Dress.Items.size(); i++)
+                            {
+                                if(!CL_CheckEasyQuestItem(chrtc.Dress.Items[i]))
+                                {
+                                    items_ok = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if(!items_ok)
+                        {
+                            Printf(LOG_Error, "[CL] %s (%s) - Character \"%s\" rejected by hat from server ID %u (reason: EQuest check - strong items).\n", conn->HisAddr.c_str(), conn->Login.c_str(), p_nickname.c_str(), srv->Number);
+                            CLCMD_Kick(conn, P_TOO_STRONG);
+                            return false;
+                        }
                     }
                 }
             }
@@ -1307,7 +1567,9 @@ bool CL_CheckNickname(Client* conn, Packet& pack)
     std::string nickname;
     pack >> nickname;
 
-    unsigned long result = CheckNickname(nickname, (conn->GameMode == GAMEMODE_Softcore));
+    nickname = TrimNickname(nickname);
+
+    unsigned long result = CheckNickname(nickname, conn->HatID);
     if(result) Printf(LOG_Error, "[CL] %s (%s) - Nickname \"%s\" rejected.\n", conn->HisAddr.c_str(), conn->Login.c_str(), nickname.c_str());
 
     return CLCMD_SendNicknameResult(conn, result);

@@ -14,6 +14,13 @@ namespace SQL
     HANDLE Mutex;
 }
 
+std::string SQL_Error()
+{
+    if(!SQL::Open)
+        return "";
+    return std::string(mysql_error(&SQL::Connection));
+}
+
 bool SQL_Init()
 {
     MYSQL* s = mysql_init(&SQL::Connection);
@@ -135,6 +142,10 @@ void SQL_CreateTables()
         `banned_date` BIGINT(1) UNSIGNED NOT NULL, \
         `banned_unbandate` BIGINT(1) UNSIGNED NOT NULL, \
         `banned_reason` TEXT CHARACTER SET cp866 COLLATE cp866_bin NOT NULL, \
+        `muted` TINYINT(1) NOT NULL \
+        `muted_date` BIGINT(1) UNSIGNED NOT NULL, \
+        `muted_unmutedate` BIGINT(1) UNSIGNED NOT NULL, \
+        `muted_reason` TEXT CHARACTER SET cp866 COLLATE cp866_bin NOT NULL, \
         `locked` TINYINT(1) NOT NULL, \
         `locked_id1` INT(1) UNSIGNED NOT NULL, \
         `locked_id2` INT(1) UNSIGNED NOT NULL, \
@@ -142,6 +153,7 @@ void SQL_CreateTables()
         `id` BIGINT(1) NOT NULL AUTO_INCREMENT, \
         `password` VARCHAR(256) NOT NULL, \
         `ip_filter` TEXT NOT NULL, \
+        `locked_hat` INT(1) UNSIGNED NOT NULL, \
         UNIQUE(`id`))"; // long query to create logins table
 
     std::string query_table_characters = "CREATE TABLE IF NOT EXISTS `characters` ( \
@@ -182,12 +194,23 @@ void SQL_CreateTables()
         `sec_40A40A40` MEDIUMBLOB NOT NULL, \
         `retarded` INT(1) UNSIGNED NOT NULL, \
         `deleted` INT(1) UNSIGNED NOT NULL, \
+        `clantag` VARCHAR(16) CHARACTER SET cp866 COLLATE cp866_bin NOT NULL, \
         UNIQUE(`id`))"; // long query to create characters table
+
+    std::string query_table_authlog = "CREATE TABLE IF NOT EXISTS `authlog` ( \
+        `id` BIGINT(1) NOT NULL AUTO_INCREMENT, \
+        `login_name` VARCHAR(256) NOT NULL, \
+        `ip` VARCHAR(16) NOT NULL, \
+        `uuid` VARCHAR(64) NOT NULL, \
+        `date` TIMESTAMP NOT NULL, \
+        UNIQUE(`id`))"; // long query to create authlog table
 
     if(mysql_query(&SQL::Connection, query_table_logins.c_str()) != 0)
         Printf(LOG_Silent, "[DB] Warning: table `logins` not created!\n");
     if(mysql_query(&SQL::Connection, query_table_characters.c_str()) != 0)
         Printf(LOG_Silent, "[DB] Warning: table `characters` not created!\n");
+    if(mysql_query(&SQL::Connection, query_table_authlog.c_str()) != 0)
+        Printf(LOG_Silent, "[DB] Warning: table `authlog` not created!\n");
 }
 
 #include "CCharacter.hpp"

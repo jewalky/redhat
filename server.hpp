@@ -13,16 +13,20 @@
 #define SERVER_CAP_FIXED_MAPLIST 0x00000002
 #define SERVER_CAP_SOFTCORE      0x00000004
 
-#define SVF_CLOSED	0x00000001
-#define SVF_PVM		0x00000002
-#define SVF_MUTED	0x00000004
-#define SVF_ADVPVM	0x00000040
-#define SVF_ONEMAP	0x00000080
-#define SVF_NOHEALING 0x00000100
-#define SVF_NOOBSRV	0x00000200
-#define SVF_SOFTCORE 0x00000400
-#define SVF_NODROP	0x000000800
-#define SVF_FNODROP	0x000001000
+#define SVF_CLOSED	        0x00000001
+#define SVF_PVM		        0x00000002
+#define SVF_MUTED	        0x00000004
+#define SVF_ADVPVM	        0x00000040
+#define SVF_ONEMAP	        0x00000080
+#define SVF_NOHEALING       0x00000100
+#define SVF_NOOBSRV	        0x00000200
+#define SVF_SOFTCORE        0x00000400
+#define SVF_NODROP	        0x00000800
+#define SVF_FNODROP	        0x00001000
+#define SVF_NOSAVING        0x00002000
+#define SVF_SANDBOX         0x00004000
+#define SVF_ENTERMAGE       0x00008000
+#define SVF_ENTERWARRIOR    0x00010000
 
 struct ServerPlayer
 {
@@ -132,6 +136,9 @@ bool SL_Initialized(Server* layer, Packet& pack);
 bool SL_Shutdown(Server* layer, Packet& pack);
 bool SL_UpdateInfo(Server* srv, Packet& pack);
 bool SL_Broadcast(Server* srv, Packet& pack);
+
+bool SLCMD_Screenshot(Server* srv, std::string login, uint32_t uid, bool done, std::string url);
+bool SLCMD_MutePlayer(Server* srv, std::string login, uint32_t unmutedate);
 
 void Net_ProcessServers();
 

@@ -4,6 +4,7 @@
 #include "utils.hpp"
 #include "listener.hpp"
 #include "status.hpp"
+#include "login.hpp"
 
 void H_Quit()
 {
@@ -30,6 +31,9 @@ bool H_Init(int argc, char* argv[])
 
     if(!ReadConfig("redhat.cfg")) return false;
     if(!SQL_Init()) return false;
+
+    if(!Login_UnlockAll())
+        Printf(LOG_Warning, "[HC] Unable to hat-unlock all logins.\n");
 
     bool exit_ = false;
     for(int i = 0; i < argc; i++)

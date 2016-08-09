@@ -83,9 +83,17 @@ bool SVCMD_Welcome(ServerConnection* conn)
 {
     Packet pack;
     pack << (uint8_t)0xD5;
+    /*
     if((conn->Parent->Info.ServerCaps & SERVER_CAP_SOFTCORE) != SERVER_CAP_SOFTCORE)
         pack << (uint32_t)Config::HatID;
-    else pack << (uint32_t)Config::HatIDSoftcore;
+    else pack << (uint32_t)Config::HatIDSoftcore;*/
+    /*
+    if (conn->Parent->Info.ServerMode & SVF_SOFTCORE)
+        pack << (uint32_t)Config::HatIDSoftcore;
+    else if (conn->Parent->Info.ServerMode & SVF_SANDBOX)
+        pack << (uint32_t)Config::HatIDSandbox;
+    else pack << (uint32_t)Config::HatID;*/
+    pack << (uint32_t)Config::HatID;
     pack << (uint32_t)1;
 
     return (SOCK_SendPacket(conn->Socket, pack, conn->Version) == 0);
@@ -185,8 +193,47 @@ bool SV_ReturnCharacter(ServerConnection* conn, Packet& pack)
 
     bool sent_s = true;
 
-    if(!Login_CharExists(p_logname, chr.Id1, chr.Id2, true) && ((conn->Parent->Info.ServerMode & SVF_SOFTCORE) == SVF_SOFTCORE))
-        chr.HatId = Config::HatIDSoftcore;
+    if(!Login_CharExists(p_logname, chr.Id1, chr.Id2, true))
+    {
+        if (conn->Parent->Info.GameMode == GAMEMODE_Softcore)
+            chr.HatId = Config::HatIDSoftcore;
+        else if (conn->Parent->Info.GameMode == GAMEMODE_Sandbox)
+            chr.HatId = Config::HatIDSandbox;
+        else chr.HatId = Config::HatID;
+    }
+
+    bool should_unlock = true;
+    bool should_save = true;
+    if(should_save && ((chr.Id2 & 0x3F000000) != 0x3F000000))
+    {
+        int srvHatId;
+        if (conn->Parent->Info.GameMode == GAMEMODE_Softcore)
+            srvHatId = Config::HatIDSoftcore;
+        else if (conn->Parent->Info.GameMode == GAMEMODE_Sandbox)
+            srvHatId = Config::HatIDSandbox;
+        else srvHatId = Config::HatID;
+
+        bool server_nosaving = ((conn->Parent->Info.ServerMode & SVF_NOSAVING) == SVF_NOSAVING);
+
+        if(server_nosaving)
+        {
+            should_save = false;
+            Printf(LOG_Trivial, "[SV] Not saving login \"%s\" (SVG_NOSAVING is set, flags %08X).\n", p_logname.c_str(), conn->Parent->Info.ServerMode);
+        }
+        else if(conn->Parent->Info.GameMode == GAMEMODE_Arena)
+        {
+            should_save = false;
+            Printf(LOG_Trivial, "[SV] Not saving login \"%s\" (Arena).\n", p_logname.c_str());
+        }
+        else if(chr.HatId != srvHatId)
+        {
+            //should_save = false;
+            //Printf(LOG_Trivial, "[SV] Not saving login \"%s\" (chr.HatId==%d != srvHatId==%d; GameMode=%d)\n", chr.HatId, srvHatId, conn->Parent->Info.GameMode);
+            Printf(LOG_Error, "[SV] Server ID %u sent login \"%s\" with bad HatID (chr.HatId==%d != srvHatId==%d; GameMode==%d); saving with srvHatId.\n",
+                conn->ID, p_logname.c_str(), chr.HatId, srvHatId, conn->Parent->Info.GameMode);
+            chr.HatId = srvHatId;
+        }
+    }
 
     BinaryStream obs;
     if(!chr.SaveToStream(obs))
@@ -201,14 +248,38 @@ bool SV_ReturnCharacter(ServerConnection* conn, Packet& pack)
         p_chrdata[i] = obsb[i];
     p_chrlen = obsb.size();
 
-    bool should_save = true;
-    if((chr.Id2 & 0x3F000000) != 0x3F000000)
+    bool p__locked_hat, p__locked;
+    unsigned long p__id1, p__id2, p__srvid;
+
+    if(!Login_GetLocked(p_logname, p__locked_hat, p__locked, p__id1, p__id2, p__srvid))
     {
-        if(conn->Parent->Info.GameMode != GAMEMODE_Cooperative)
-            should_save = false;
-        bool server_softcore = ((conn->Parent->Info.ServerMode & SVF_SOFTCORE) == SVF_SOFTCORE);
-        if(server_softcore && chr.HatId != Config::HatIDSoftcore)
-            should_save = false;
+        Printf(LOG_Error, "[DB] Error: Login_GetLocked(\"%s\", ..., ..., ..., ...).\n", p_logname.c_str());
+        return true;
+    }
+
+    if(p__locked_hat)
+    {
+        Printf(LOG_Error, "[SV] Warning: server tried to return character for hat-locked login \"%s\".\n", p_logname.c_str());
+        should_save = false;
+        should_unlock = false;
+    }
+    else if(!p__locked)
+    {
+        Printf(LOG_Error, "[SV] Warning: server tried to return character for unlocked login \"%s\".\n", p_logname.c_str());
+        should_save = false;
+        should_unlock = false;
+    }
+    else if(p__id1 != p_id1 || p__id2 != p_id2)
+    {
+        Printf(LOG_Error, "[SV] Warning: server tried to return different character (%u:%u as opposed to locked %u:%u).\n", p_id1, p_id2, p__id1, p__id2);
+        should_save = false;
+        should_unlock = false;
+    }
+    else if(p__srvid != conn->ID)
+    {
+        Printf(LOG_Error, "[SV] Warning: server tried to return character while not owning it!\n");
+        should_save = false;
+        should_unlock = false;
     }
 
     if(should_save && !Login_SetCharacter(p_logname, p_id1, p_id2, p_chrlen, p_chrdata, chr.Nick))
@@ -217,9 +288,23 @@ bool SV_ReturnCharacter(ServerConnection* conn, Packet& pack)
     {
         Printf(LOG_Info, "[SV] Received character \"%s\" for login \"%s\" from server ID %u.\n", chr.Nick.c_str(), p_logname.c_str(), conn->ID);
         sent_s = SVCMD_ReceivedCharacter(conn, p_logname);
+        should_unlock = true;
     }
 
-    Login_SetLocked(p_logname, false, 0, 0, 0); // character left the server, so unlock it
+    if(should_unlock) Login_SetLocked(p_logname, false, false, 0, 0, 0); // character left the server, so unlock it
+    //conn->Parent->Layer->
+    if(conn->Parent->Info.ServerCaps & SERVER_CAP_DETAILED_INFO)
+    {
+        for(size_t i = 0; i < conn->Parent->Info.Locked.size(); i++)
+        {
+            if(conn->Parent->Info.Locked[i] == p_logname)
+            {
+                conn->Parent->Info.Locked.erase(conn->Parent->Info.Locked.begin()+i);
+                i--;
+            }
+        }
+    }
+
 
     delete[] p_chrdata;
     return sent_s;
@@ -494,6 +579,17 @@ bool SL_UpdateInfo(Server* srv, Packet& pack)
     srv->Info.MapLevel = p_maplevel;
     srv->Info.Time = p_maptime;
     srv->Info.GameMode = p_gamemode;
+
+    // magic here
+    if (p_gamemode != GAMEMODE_Arena)
+    {
+        if (p_servermode & SVF_SOFTCORE)
+            srv->Info.GameMode = GAMEMODE_Softcore;
+        else if (p_servermode & SVF_SANDBOX)
+            srv->Info.GameMode = GAMEMODE_Sandbox;
+    }
+    // magic ends here
+
     srv->Info.ServerMode = p_servermode;
 
     std::vector<ServerPlayer> players_old = srv->Info.Players;
@@ -584,4 +680,24 @@ bool SL_Broadcast(Server* srv, Packet& pack)
     }
 
     return true;
+}
+
+bool SLCMD_Screenshot(Server* srv, std::string login, uint32_t uid, bool done, std::string url)
+{
+    Packet msgP;
+    msgP << (uint8_t)0x64;
+    msgP << login;
+    msgP << uid;
+    msgP << done;
+    msgP << url;
+    return (SOCK_SendPacket(srv->Layer->Socket, msgP, 20) == 0);
+}
+
+bool SLCMD_MutePlayer(Server* srv, std::string login, uint32_t unmutedate)
+{
+    Packet msgP;
+    msgP << (uint8_t)0x65;
+    msgP << login;
+    msgP << unmutedate;
+    return (SOCK_SendPacket(srv->Layer->Socket, msgP, 20) == 0);
 }
