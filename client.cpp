@@ -601,6 +601,8 @@ bool CL_Login(Client* conn, Packet& pack)
     std::string s_password = logstring;
     s_password.erase(0, p_loginlen);
 
+    s_login = Trim(s_login);
+
     if(access_level == -1)
     {
         Printf(LOG_Error, "[CL] %s (%s) - IP blocked by global rules.\n", conn->HisAddr.c_str(), s_login.c_str());

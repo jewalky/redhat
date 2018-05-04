@@ -151,6 +151,7 @@ bool ReadConfig(std::string filename)
                     srv->Name = "";
                     srv->Connection = NULL;
                     srv->Layer = NULL;
+                    srv->HatId = -1;
                     section = "server";
                 }
                 else
@@ -402,6 +403,11 @@ bool ReadConfig(std::string filename)
                     srv->IAddress = ipd[0];
                     if(ipd.size() == 2)
                         srv->IPort = StrToInt(ipd[1]);
+                }
+                else if(parameter == "hatid")
+                {
+                    if(CheckInt(value))
+                        srv->HatId = StrToInt(value);
                 }
             }
         }

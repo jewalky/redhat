@@ -200,6 +200,8 @@ bool SV_ReturnCharacter(ServerConnection* conn, Packet& pack)
         else if (conn->Parent->Info.GameMode == GAMEMODE_Sandbox)
             chr.HatId = Config::HatIDSandbox;
         else chr.HatId = Config::HatID;
+        if (conn->Parent->HatId >= 0)
+            chr.HatId = conn->Parent->HatId;
     }
 
     bool should_unlock = true;
@@ -212,6 +214,8 @@ bool SV_ReturnCharacter(ServerConnection* conn, Packet& pack)
         else if (conn->Parent->Info.GameMode == GAMEMODE_Sandbox)
             srvHatId = Config::HatIDSandbox;
         else srvHatId = Config::HatID;
+        if (conn->Parent->HatId >= 0)
+            srvHatId = conn->Parent->HatId;
 
         bool server_nosaving = ((conn->Parent->Info.ServerMode & SVF_NOSAVING) == SVF_NOSAVING);
 

@@ -104,6 +104,7 @@ struct Server
     unsigned short Port;
     std::string IAddress;
     unsigned short IPort;
+    signed int HatId;
 
     ServerConnection* Connection;
     ServerLayer* Layer;

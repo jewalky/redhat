@@ -319,6 +319,8 @@ void SQL_UpdateTables()
 
 std::string SQL_Escape(std::string string)
 {
+    string = Trim(string);
+
     std::string output = "";
     for(std::string::iterator it = string.begin(); it != string.end(); ++it)
     {
