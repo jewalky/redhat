@@ -27,7 +27,7 @@ bool Login_UnlockOne(std::string login)
     {
         login = SQL_Escape(login);
 
-        std::string query_unlockone = Format("UPDATE `logins` SET `locked_hat`='0' WHERE `name`='%s'", login.c_str());
+        std::string query_unlockone = Format("UPDATE `logins` SET `locked_hat`='0' WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_unlockone.c_str()) != 0)
         {
             SQL_Unlock();
@@ -79,7 +79,7 @@ bool Login_Exists(std::string login)
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `name` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `name` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -150,7 +150,7 @@ bool Login_Delete(std::string login)
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -174,7 +174,7 @@ bool Login_Delete(std::string login)
         int login_id = SQL_FetchInt(row, result, "id");
         SQL_FreeResult(result);
 
-        std::string query_deletelgn = Format("DELETE FROM `logins` WHERE `name`='%s' AND `id`='%u'", login.c_str(), login_id);
+        std::string query_deletelgn = Format("DELETE FROM `logins` WHERE LOWER(`name`)=LOWER('%s') AND `id`='%u'", login.c_str(), login_id);
         if(SQL_Query(query_deletelgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -222,7 +222,7 @@ bool Login_GetPassword(std::string login, std::string& password)
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `password` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `password` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -268,7 +268,7 @@ bool Login_SetPassword(std::string login, std::string password)
 
         SQL_Lock();
         std::string pass_new = Login_MakePassword(password);
-        std::string query_setpasswd = Format("UPDATE `logins` SET `password`='%s' WHERE `name`='%s'", pass_new.c_str(), login.c_str());
+        std::string query_setpasswd = Format("UPDATE `logins` SET `password`='%s' WHERE LOWER(`name`)=LOWER('%s')", pass_new.c_str(), login.c_str());
         if(SQL_Query(query_setpasswd.c_str()) != 0)
         {
             SQL_Unlock();
@@ -303,7 +303,7 @@ bool Login_SetLocked(std::string login, bool locked_hat, bool locked, unsigned l
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_setlockd = Format("UPDATE `logins` SET `locked_hat`='%u', `locked`='%u', `locked_id1`='%u', `locked_id2`='%u', `locked_srvid`='%u' WHERE `name`='%s'",
+        std::string query_setlockd = Format("UPDATE `logins` SET `locked_hat`='%u', `locked`='%u', `locked_id1`='%u', `locked_id2`='%u', `locked_srvid`='%u' WHERE LOWER(`name`)=LOWER('%s')",
                                                 (unsigned int)locked_hat, (unsigned int)locked, id1, id2, srvid, login.c_str());
         if(SQL_Query(query_setlockd.c_str()) != 0)
         {
@@ -339,7 +339,7 @@ bool Login_GetLocked(std::string login, bool& locked_hat, bool& locked, unsigned
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `locked_hat`, `locked`, `locked_id1`, `locked_id2`, `locked_srvid` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `locked_hat`, `locked`, `locked_id1`, `locked_id2`, `locked_srvid` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -390,7 +390,7 @@ bool Login_SetBanned(std::string login, bool banned, unsigned long date_ban, uns
 
         SQL_Lock();
 
-        std::string query_setlockd = Format("UPDATE `logins` SET `banned`='%u', `banned_date`='%u', `banned_unbandate`='%u', `banned_reason`='%s' WHERE `name`='%s'",
+        std::string query_setlockd = Format("UPDATE `logins` SET `banned`='%u', `banned_date`='%u', `banned_unbandate`='%u', `banned_reason`='%s' WHERE LOWER(`name`)=LOWER('%s')",
                                                 (unsigned int)banned, date_ban, date_unban, reason.c_str(), login.c_str());
         if(SQL_Query(query_setlockd.c_str()) != 0)
         {
@@ -424,7 +424,7 @@ bool Login_GetBanned(std::string login, bool& banned, unsigned long& date_ban, u
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `id`, `banned`, `banned_date`, `banned_unbandate`, `banned_reason` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `id`, `banned`, `banned_date`, `banned_unbandate`, `banned_reason` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -474,7 +474,7 @@ bool Login_SetMuted(std::string login, bool muted, unsigned long date_mute, unsi
 
         SQL_Lock();
 
-        std::string query_setlockd = Format("UPDATE `logins` SET `muted`='%u', `muted_date`='%u', `muted_unmutedate`='%u', `muted_reason`='%s' WHERE `name`='%s'",
+        std::string query_setlockd = Format("UPDATE `logins` SET `muted`='%u', `muted_date`='%u', `muted_unmutedate`='%u', `muted_reason`='%s' WHERE LOWER(`name`)=LOWER('%s')",
                                                 (unsigned int)muted, date_mute, date_unmute, reason.c_str(), login.c_str());
         if(SQL_Query(query_setlockd.c_str()) != 0)
         {
@@ -508,7 +508,7 @@ bool Login_GetMuted(std::string login, bool& muted, unsigned long& date_mute, un
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `id`, `muted`, `muted_date`, `muted_unmutedate`, `muted_reason` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `id`, `muted`, `muted_date`, `muted_unmutedate`, `muted_reason` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -644,7 +644,7 @@ bool Login_SetCharacter(std::string login, unsigned long id1, unsigned long id2,
         nickname = SQL_Escape(nickname);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -904,7 +904,7 @@ bool Login_GetCharacter(std::string login, unsigned long id1, unsigned long id2,
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -1061,7 +1061,7 @@ bool Login_GetCharacter(std::string login, unsigned long id1, unsigned long id2,
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -1183,7 +1183,7 @@ bool Login_GetCharacterList(std::string login, std::vector<CharacterInfo>& info,
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -1396,7 +1396,7 @@ bool Login_DelCharacter(std::string login, unsigned long id1, unsigned long id2)
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -1459,7 +1459,7 @@ bool Login_CharExists(std::string login, unsigned long id1, unsigned long id2, b
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_checklgn = Format("SELECT `id` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_checklgn.c_str()) != 0)
         {
             SQL_Unlock();
@@ -1532,7 +1532,7 @@ bool Login_GetIPF(std::string login, std::string& ipf)
         login = SQL_Escape(login);
 
         SQL_Lock();
-        std::string query_getipf = Format("SELECT `ip_filter` FROM `logins` WHERE `name`='%s'", login.c_str());
+        std::string query_getipf = Format("SELECT `ip_filter` FROM `logins` WHERE LOWER(`name`)=LOWER('%s')", login.c_str());
         if(SQL_Query(query_getipf.c_str()) != 0)
         {
             SQL_Unlock();
@@ -1576,7 +1576,7 @@ bool Login_SetIPF(std::string login, std::string ipf)
         if(!Login_Exists(login)) return false;
 
         SQL_Lock();
-        std::string query_setipf = Format("UPDATE `logins` SET `ip_filter`='%s' WHERE `name`='%s'", ipf.c_str(), login.c_str());
+        std::string query_setipf = Format("UPDATE `logins` SET `ip_filter`='%s' WHERE LOWER(`name`)=LOWER('%s')", ipf.c_str(), login.c_str());
         if(SQL_Query(query_setipf.c_str()) != 0)
         {
             SQL_Unlock();

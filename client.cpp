@@ -774,7 +774,7 @@ bool CL_Login(Client* conn, Packet& pack)
                     for(std::vector<std::string>::iterator jt = srv->Info.Locked.begin(); jt != srv->Info.Locked.end(); ++jt)
                     {
                         std::string& login = (*jt);
-                        if(login == s_login)
+                        if(ToLower(login) == ToLower(s_login))
                             char_on_server = true;
                     }
 
@@ -789,6 +789,7 @@ bool CL_Login(Client* conn, Packet& pack)
                     // todo: пофиксить проверку логинов на сервере!
                     /// сервера сохраняют персонажей напрямую в базу, вернули на место
                     /// 19.06.2014 - это что я имел в виду? (и главное, когда?)
+                    /// 2022 - привет из нового десятилетия, дюп видимо останется
                 }
 
                 if(r_cancel_lock)
@@ -900,7 +901,7 @@ bool CL_Login(Client* conn, Packet& pack)
                 for(std::vector<std::string>::iterator jt = srv->Info.Locked.begin(); jt != srv->Info.Locked.end(); ++jt)
                 {
                     std::string& login = (*jt);
-                    if(login == s_login)
+                    if(ToLower(login) == ToLower(s_login))
                         char_on_server = true;
                 }
 

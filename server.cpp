@@ -301,7 +301,7 @@ bool SV_ReturnCharacter(ServerConnection* conn, Packet& pack)
     {
         for(size_t i = 0; i < conn->Parent->Info.Locked.size(); i++)
         {
-            if(conn->Parent->Info.Locked[i] == p_logname)
+            if(ToLower(conn->Parent->Info.Locked[i]) == ToLower(p_logname))
             {
                 conn->Parent->Info.Locked.erase(conn->Parent->Info.Locked.begin()+i);
                 i--;

@@ -287,44 +287,44 @@
 
 1103304882 w:\sources\redhat_v2\chartdirector\include\memblock.h
 
-1354941898 source:w:\dev\redhat\binarystream.cpp
+1354945498 source:w:\dev\redhat\binarystream.cpp
 	"BinaryStream.hpp"
 	<fstream>
 
-1354941882 w:\dev\redhat\binarystream.hpp
+1354945482 w:\dev\redhat\binarystream.hpp
 	<string>
 	<vector>
 
-1380745672 source:w:\dev\redhat\ccharacter.cpp
+1380752872 source:w:\dev\redhat\ccharacter.cpp
 	"CCharacter.hpp"
 	<ctime>
 	<cstdlib>
 	"utils.hpp"
 
-1399729769 w:\dev\redhat\ccharacter.hpp
+1399736969 w:\dev\redhat\ccharacter.hpp
 	<string>
 	<vector>
 	"BinaryStream.hpp"
 
-1354073108 w:\dev\redhat\utils.hpp
+1354076708 w:\dev\redhat\utils.hpp
 	<string>
 	<vector>
 	<dirent.h>
 	<cstdlib>
 
-1345370865 source:w:\dev\redhat\character.cpp
+1345378065 source:w:\dev\redhat\character.cpp
 	<cstdio>
 	<cstring>
 	<fstream>
 	"character.hpp"
 
-1354930351 w:\dev\redhat\character.hpp
+1354933951 w:\dev\redhat\character.hpp
 	<cstdlib>
 	<string>
 	<vector>
 	<map>
 
-1493109204 source:w:\dev\redhat\client.cpp
+1651065363 source:w:\dev\redhat\client.cpp
 	"client.hpp"
 	"utils.hpp"
 	<winsock2.h>
@@ -339,7 +339,7 @@
 	"session.hpp"
 	"CRC_32.h"
 
-1467284305 w:\dev\redhat\client.hpp
+1467291505 w:\dev\redhat\client.hpp
 	<string>
 	<vector>
 	"socket.hpp"
@@ -347,45 +347,45 @@
 	"listener.hpp"
 	<fstream>
 
-1378744524 w:\dev\redhat\socket.hpp
+1651064978 w:\dev\redhat\socket.hpp
 	<string>
 	"packet.hpp"
 	"serialize.hpp"
 
-1347468193 w:\dev\redhat\packet.hpp
+1347475393 w:\dev\redhat\packet.hpp
 	"serialize.hpp"
 
-1363724790 w:\dev\redhat\serialize.hpp
+1363728390 w:\dev\redhat\serialize.hpp
 	<vector>
 	<string>
 	<stdint.h>
 
-1517824583 w:\dev\redhat\server.hpp
+1517828183 w:\dev\redhat\server.hpp
 	"listener.hpp"
 	"config.hpp"
 	"socket.hpp"
 	<windows.h>
 
-1352748591 w:\dev\redhat\listener.hpp
+1352752191 w:\dev\redhat\listener.hpp
 	<vector>
 	"socket.hpp"
 
-1425168311 w:\dev\redhat\config.hpp
+1425171911 w:\dev\redhat\config.hpp
 	<string>
 	<vector>
 
-1441633226 w:\dev\redhat\login.hpp
+1441640426 w:\dev\redhat\login.hpp
 	<string>
 	<vector>
 	"sql.hpp"
 	"CCharacter.hpp"
 
-1399732474 w:\dev\redhat\sql.hpp
+1651063894 w:\dev\redhat\sql.hpp
 	<winsock2.h>
 	<mysql.h>
 	<string>
 
-1249641072 w:\dev\redhat\mysql\include\mysql.h
+1249648272 w:\dev\redhat\mysql\include\mysql.h
 	<standards.h>
 	<sys/types.h>
 	<winsock2.h>
@@ -396,37 +396,37 @@
 	"typelib.h"
 	"my_alloc.h"
 
-1249656444 w:\dev\redhat\mysql\include\mysql_version.h
+1249663644 w:\dev\redhat\mysql\include\mysql_version.h
 	<custom_conf.h>
 
-1249641072 w:\dev\redhat\mysql\include\mysql_com.h
+1249648272 w:\dev\redhat\mysql\include\mysql_com.h
 
-1249641072 w:\dev\redhat\mysql\include\mysql_time.h
+1249648272 w:\dev\redhat\mysql\include\mysql_time.h
 
-1249641072 w:\dev\redhat\mysql\include\my_list.h
+1249648272 w:\dev\redhat\mysql\include\my_list.h
 
-1249641072 w:\dev\redhat\mysql\include\typelib.h
+1249648272 w:\dev\redhat\mysql\include\typelib.h
 	"my_alloc.h"
 
-1249641072 w:\dev\redhat\mysql\include\my_alloc.h
+1249648272 w:\dev\redhat\mysql\include\my_alloc.h
 
-1347560421 w:\dev\redhat\session.hpp
+1347567621 w:\dev\redhat\session.hpp
 	<string>
 
-1362846202 w:\dev\redhat\version.hpp
+1362849802 w:\dev\redhat\version.hpp
 	<stdint.h>
 
-1332113715 w:\dev\redhat\crc_32.h
+1651064978 w:\dev\redhat\crc_32.h
 	<windows.h>
 
-1517824580 source:w:\dev\redhat\config.cpp
+1517828180 source:w:\dev\redhat\config.cpp
 	"config.hpp"
 	<fstream>
 	<algorithm>
 	"utils.hpp"
 	"server.hpp"
 
-1332113716 source:w:\dev\redhat\crc_32.cpp
+1651064978 source:w:\dev\redhat\crc_32.cpp
 	"CRC_32.h"
 	<io.h>
 	<fcntl.h>
@@ -434,22 +434,22 @@
 	<tchar.h>
 	<commctrl.h>
 
-1351864373 source:w:\dev\redhat\hat2.cpp
+1651063894 source:w:\dev\redhat\hat2.cpp
 	"packet.hpp"
 	<winsock2.h>
 
-1412154224 source:w:\dev\redhat\lgn.cpp
+1412161424 source:w:\dev\redhat\lgn.cpp
 	<cstring>
 	"lgn.hpp"
 	"utils.hpp"
 
-1347573936 w:\dev\redhat\lgn.hpp
+1347581136 w:\dev\redhat\lgn.hpp
 	<string>
 	<fstream>
 	<vector>
 	"character.hpp"
 
-1363726300 source:w:\dev\redhat\listener.cpp
+1651063894 source:w:\dev\redhat\listener.cpp
 	"config.hpp"
 	"listener.hpp"
 	"socket.hpp"
@@ -458,7 +458,7 @@
 	"server.hpp"
 	<winsock2.h>
 
-1441633349 source:w:\dev\redhat\login.cpp
+1651065165 source:w:\dev\redhat\login.cpp
 	"login.hpp"
 	"sql.hpp"
 	"utils.hpp"
@@ -467,12 +467,12 @@
 	<windows.h>
 	"CCharacter.hpp"
 
-1321690042 w:\dev\redhat\sha1.h
+1321693642 w:\dev\redhat\sha1.h
 
-1363726592 source:w:\dev\redhat\packet.cpp
+1363730192 source:w:\dev\redhat\packet.cpp
 	"packet.hpp"
 
-1412154400 source:w:\dev\redhat\redhat.cpp
+1651063894 source:w:\dev\redhat\redhat.cpp
 	"config.hpp"
 	"socket.hpp"
 	"sql.hpp"
@@ -481,9 +481,9 @@
 	"status.hpp"
 	"login.hpp"
 
-1388792160 w:\dev\redhat\status.hpp
+1388795760 w:\dev\redhat\status.hpp
 
-1363724797 source:w:\dev\redhat\serialize.cpp
+1363728397 source:w:\dev\redhat\serialize.cpp
 	"serialize.hpp"
 	"utils.hpp"
 	<cstring>
@@ -491,15 +491,15 @@
 	<fstream>
 	<iostream>
 
-1351870101 source:w:\dev\redhat\session.cpp
+1351873701 source:w:\dev\redhat\session.cpp
 	"session.hpp"
 	<windows.h>
 	<vector>
 
-1321690788 source:w:\dev\redhat\sha1.cpp
+1321694388 source:w:\dev\redhat\sha1.cpp
 	"sha1.h"
 
-1379530696 source:w:\dev\redhat\socket.cpp
+1651063894 source:w:\dev\redhat\socket.cpp
 	"config.hpp"
 	"socket.hpp"
 	<winsock2.h>
@@ -507,9 +507,9 @@
 	"utils.hpp"
 	"hat2.hpp"
 
-1347445832 w:\dev\redhat\hat2.hpp
+1347453032 w:\dev\redhat\hat2.hpp
 
-1493109125 source:w:\dev\redhat\sql.cpp
+1493116325 source:w:\dev\redhat\sql.cpp
 	"config.hpp"
 	"sql.hpp"
 	"utils.hpp"
@@ -529,7 +529,7 @@
 	<mysql.h>
 	<map>
 
-1388792204 source:w:\dev\redhat\status.cpp
+1388795804 source:w:\dev\redhat\status.cpp
 	"status.hpp"
 	<fstream>
 	<string>
@@ -538,7 +538,7 @@
 	<ctime>
 	"BinaryStream.hpp"
 
-1358636793 source:w:\dev\redhat\utils.cpp
+1358640393 source:w:\dev\redhat\utils.cpp
 	"utils.hpp"
 	"config.hpp"
 	<cstdarg>
@@ -547,11 +547,11 @@
 	<fstream>
 	<windows.h>
 
-1362846234 source:w:\dev\redhat\version.cpp
+1362849834 source:w:\dev\redhat\version.cpp
 	"version.hpp"
 	<map>
 
-1517824652 source:w:\dev\redhat\server.cpp
+1651065267 source:w:\dev\redhat\server.cpp
 	"server.hpp"
 	"login.hpp"
 	"utils.hpp"

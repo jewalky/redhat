@@ -4210,3 +4210,6 @@
 [ 1.07.2014 21:10:19] [DB] Unable to establish connection to MySQL server (at localhost:3306).
 [ 1.07.2014 21:10:19] [DB] The error reported was: Can't connect to MySQL server on 'localhost' (10061)
 [ 1.07.2014 21:10:19] [HC] Hat is shutting down.
+[27.04.2022 15:19:21] [DB] Unable to establish connection to MySQL server (at localhost:3306).
+[27.04.2022 15:19:21] [DB] The error reported was: Unknown database 'logins'
+[27.04.2022 15:19:21] [HC] Hat is shutting down.
